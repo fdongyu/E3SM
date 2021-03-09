@@ -248,6 +248,11 @@ contains
     endif
     ! Print masterlist of history fields
 
+    ! Dongyu
+    call RtmHistAddfld (fname='SSH', units='m',  &
+         avgflag='A', long_name='MOSART sea surface height ', &
+         ptr_rof=rtmCTL%ssh, default='active')
+
     call RtmHistPrintflds()
 
   end subroutine RtmHistFldsInit

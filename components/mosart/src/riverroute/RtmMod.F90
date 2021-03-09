@@ -15,11 +15,13 @@ module RtmMod
   use rof_cpl_indices , only : nt_rtm, rtm_tracers 
   use RtmSpmd         , only : masterproc, npes, iam, mpicom_rof, ROFID, mastertask, &
                                MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
+  ! Dongyu
   use RtmVar          , only : re, spval, rtmlon, rtmlat, iulog, ice_runoff, &
                                frivinp_rtm, finidat_rtm, nrevsn_rtm,rstraflag,ngeom,nlayers,rinittemp, &
                                nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                inst_index, inst_suffix, inst_name, wrmflag, inundflag, &
                                use_lnd_rof_two_way, smat_option, decomp_option, &
+                               use_ocn_rof_two_way, &
                                barrier_timers, heatflag, sediflag, isgrid2d
   use RtmFileUtils    , only : getfil, getavu, relavu
   use RtmTimeManager  , only : timemgr_init, get_nstep, get_curr_date, advance_timestep
@@ -253,7 +255,7 @@ contains
     !-------------------------------------------------------
     ! Read in mosart namelist
     !-------------------------------------------------------
-
+    ! Dongyu
     namelist /mosart_inparm / ice_runoff, do_rtm, do_rtmflood, &
          frivinp_rtm, finidat_rtm, nrevsn_rtm, coupling_period, &
          rtmhist_ndens, rtmhist_mfilt, rtmhist_nhtfrq, &
@@ -262,7 +264,7 @@ contains
          rtmhist_avgflag_pertape, decomp_option, wrmflag,rstraflag,ngeom,nlayers,rinittemp, &
          inundflag, smat_option, delt_mosart, barrier_timers, &
          RoutingMethod, DLevelH2R, DLevelR, sediflag, heatflag, &
-         use_lnd_rof_two_way
+         use_lnd_rof_two_way, use_ocn_rof_two_way
 
     namelist /inund_inparm / opt_inund, &
          opt_truedw, opt_calcnr, nr_max, nr_min, &
@@ -281,6 +283,7 @@ contains
     nlayers     = 30				  
     inundflag   = .false.
     use_lnd_rof_two_way = .false.
+    use_ocn_rof_two_way = .false.  ! Dongyu
     sediflag    = .false.
     heatflag    = .false.
     barrier_timers = .false.
@@ -373,6 +376,7 @@ contains
     call mpi_bcast (sediflag,       1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (heatflag,       1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (use_lnd_rof_two_way, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
+    call mpi_bcast (use_ocn_rof_two_way, 1, MPI_LOGICAL, 0, mpicom_rof, ier)  ! Dongyu
     call mpi_bcast (barrier_timers, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
     call mpi_bcast (rtmhist_nhtfrq, size(rtmhist_nhtfrq), MPI_INTEGER,   0, mpicom_rof, ier)

@@ -22,10 +22,12 @@ module rof_comp_mct
                                 seq_infodata_start_type_brnch
   use seq_comm_mct     , only : seq_comm_suffix, seq_comm_inst, seq_comm_name
   use RunoffMod        , only : rtmCTL, TRunoff, THeat, TUnit, Tctl
+  ! Dongyu
   use RtmVar           , only : rtmlon, rtmlat, ice_runoff, iulog, &
                                 nsrStartup, nsrContinue, nsrBranch, & 
                                 inst_index, inst_suffix, inst_name, RtmVarSet, &
-                                wrmflag, heatflag, sediflag, inundflag, use_lnd_rof_two_way
+                                wrmflag, heatflag, sediflag, inundflag, use_lnd_rof_two_way, &
+                                use_ocn_rof_two_way
   use RtmSpmd          , only : masterproc, mpicom_rof, npes, iam, RtmSpmdInit, ROFID
   use RtmMod           , only : Rtmini, Rtmrun
   use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size
@@ -33,6 +35,7 @@ module rof_comp_mct
 
   use WRM_type_mod     , only : StorWater
 
+  ! Dongyu
   use rof_cpl_indices  , only : rof_cpl_indices_set, nt_rtm, rtm_tracers, &
                                 index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
@@ -41,6 +44,7 @@ module rof_comp_mct
                                 index_x2r_Sa_tbot, index_x2r_Sa_pbot, &
                                 index_x2r_Sa_u   , index_x2r_Sa_v   , &
                                 index_x2r_Sa_shum, &
+                                index_x2r_So_ssh,  &
                                 index_x2r_Faxa_lwdn , &
                                 index_x2r_Faxa_swvdr, index_x2r_Faxa_swvdf, &
                                 index_x2r_Faxa_swndr, index_x2r_Faxa_swndf, &
@@ -102,6 +106,7 @@ contains
     ! !LOCAL VARIABLES:
     logical :: rof_prognostic                        ! flag
     logical :: flood_present                         ! flag
+    logical :: rofocn_prognostic                     ! Dongyu ocn rof two way
     integer :: mpicom_loc                            ! mpi communicator
     type(mct_gsMap),         pointer :: gsMap_rof    ! runoff model MCT GS map
     type(mct_gGrid),         pointer :: dom_r        ! runoff model domain
@@ -273,7 +278,7 @@ contains
 
     ! Fill in infodata
     call seq_infodata_PutData( infodata, rof_present=rof_prognostic, rof_nx = rtmlon, rof_ny = rtmlat, &
-         rof_prognostic=rof_prognostic)
+         rof_prognostic=rof_prognostic, rofocn_prognostic=use_ocn_rof_two_way) ! Dongyu
     call seq_infodata_PutData( infodata, flood_present=flood_present)
 
     ! Reset shr logging to original values
@@ -620,6 +625,10 @@ contains
        rtmCTL%qgwl(n,nfrz) = 0.0_r8
        rtmCTL%qdto(n,nfrz) = 0.0_r8
        rtmCTL%qdem(n,nfrz) = 0.0_r8
+
+       if (use_ocn_rof_two_way) then
+          rtmCTL%ssh(n) = x2r_r%rAttr(index_x2r_So_ssh,n2)  ! Dongyu
+       end if
 
        if(heatflag) then
           rtmCTL%Tqsur(n) = x2r_r%rAttr(index_x2r_Flrl_Tqsur,n2)
