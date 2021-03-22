@@ -4131,6 +4131,16 @@ contains
      allocate (TPara%c_twid(begr:endr))
      TPara%c_twid = 1.0_r8
 
+     ! Dongyu
+     if ( Tctl%RoutingMethod == 4 ) then
+        allocate (rtmCTL%bbox(4))
+        ! ICoM domain
+        rtmCTL%bbox(1) = -77.5
+        rtmCTL%bbox(2) = -75
+        rtmCTL%bbox(3) = 35
+        rtmCTL%bbox(4) = 40
+     end if
+
      if ( Tctl%RoutingMethod == 4 ) then       ! Use diffusion wave method in channel routing computation.
         allocate (TRunoff%rslp_energy(begr:endr))
         TRunoff%rslp_energy = 0.0_r8

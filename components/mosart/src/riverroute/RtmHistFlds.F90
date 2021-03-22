@@ -11,7 +11,7 @@ module RtmHistFlds
   use shr_kind_mod   , only: r8 => shr_kind_r8
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, rstraflag
+  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, rstraflag, use_ocn_rof_two_way ! Dongyu
 
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
 
@@ -249,9 +249,14 @@ contains
     ! Print masterlist of history fields
 
     ! Dongyu
-    call RtmHistAddfld (fname='SSH', units='m',  &
-         avgflag='A', long_name='MOSART sea surface height ', &
-         ptr_rof=rtmCTL%ssh, default='active')
+    if (use_ocn_rof_two_way) then
+      call RtmHistAddfld (fname='SSH', units='m',  &
+           avgflag='A', long_name='MOSART sea surface height ', &
+           ptr_rof=rtmCTL%ssh, default='active')
+      call RtmHistAddfld (fname='saltFlux', units='PSU ms-1',  &
+           avgflag='A', long_name='MOSART salt Flux from ocean ', &
+           ptr_rof=rtmCTL%saltFlux, default='active')
+    endif
 
     call RtmHistPrintflds()
 
