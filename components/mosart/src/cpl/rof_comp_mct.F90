@@ -44,7 +44,7 @@ module rof_comp_mct
                                 index_x2r_Sa_tbot, index_x2r_Sa_pbot, &
                                 index_x2r_Sa_u   , index_x2r_Sa_v   , &
                                 index_x2r_Sa_shum, &
-                                index_x2r_So_ssh,  index_x2r_Foro_saltFlux, &
+                                index_x2r_So_ssh,  index_x2r_So_s_ocn2rof, &
                                 index_x2r_Faxa_lwdn , &
                                 index_x2r_Faxa_swvdr, index_x2r_Faxa_swvdf, &
                                 index_x2r_Faxa_swndr, index_x2r_Faxa_swndf, &
@@ -627,8 +627,8 @@ contains
        rtmCTL%qdem(n,nfrz) = 0.0_r8
 
        if (use_ocn_rof_two_way) then
-          rtmCTL%ssh(n) = x2r_r%rAttr(index_x2r_So_ssh,n2)  ! Dongyu
-          rtmCTL%saltFlux(n) = x2r_r%rAttr(index_x2r_Foro_saltFlux,n2)  ! Dongyu
+          rtmCTL%ssh(n)       = x2r_r%rAttr(index_x2r_So_ssh,n2)        ! Dongyu
+          rtmCTL%s_ocn2rof(n) = x2r_r%rAttr(index_x2r_So_s_ocn2rof,n2)  ! Dongyu
        end if
 
        if(heatflag) then

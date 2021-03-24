@@ -253,9 +253,12 @@ contains
       call RtmHistAddfld (fname='SSH', units='m',  &
            avgflag='A', long_name='MOSART sea surface height ', &
            ptr_rof=rtmCTL%ssh, default='active')
-      call RtmHistAddfld (fname='saltFlux', units='PSU ms-1',  &
-           avgflag='A', long_name='MOSART salt Flux from ocean ', &
-           ptr_rof=rtmCTL%saltFlux, default='active')
+      call RtmHistAddfld (fname='s_ocn2rof', units='PSU',  &
+           avgflag='A', long_name='Salinity from ocean model ', &
+           ptr_rof=rtmCTL%s_ocn2rof, default='active')
+      !call RtmHistAddfld (fname='saltFlux', units='PSU ms-1',  &
+      !     avgflag='A', long_name='MOSART salt Flux from ocean ', &
+      !     ptr_rof=rtmCTL%saltFlux, default='active')
     endif
 
     call RtmHistPrintflds()

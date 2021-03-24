@@ -162,8 +162,9 @@ module RunoffMod
      real(r8), pointer :: templand_Ttrib_nt2(:)
      real(r8), pointer :: templand_Tchanr_nt2(:)
 
-     real(r8), pointer :: ssh(:)       ! Dongyu
-     real(r8), pointer :: saltFlux(:)  ! Dongyu
+     real(r8), pointer :: ssh(:)        ! Dongyu
+     real(r8), pointer :: s_ocn2rof(:)  ! Dongyu
+     !real(r8), pointer :: saltFlux(:)  ! Dongyu
      real(r8), pointer :: bbox(:)      ! Dongyu add bounding box [-95.40,-94.49,28.8,29.9]
      
   end type runoff_flow
@@ -614,7 +615,7 @@ contains
              rtmCTL%qdto(begr:endr,nt_rtm),       &
              rtmCTL%qdem(begr:endr,nt_rtm),       & 
              rtmCTL%ssh(begr:endr),               &
-             rtmCTL%saltFlux(begr:endr),          &
+             rtmCTL%s_ocn2rof(begr:endr),         &
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -678,8 +679,8 @@ contains
       rtmCTL%templand_Ttrib(:)  = spval
       rtmCTL%templand_Tchanr(:) = spval
 
-      rtmCTL%ssh(:)      = 0._r8   ! Dongyu
-      rtmCTL%saltFlux(:) = 0._r8   ! Dongyu
+      !rtmCTL%ssh(:)      = 0._r8   ! Dongyu
+      !rtmCTL%saltFlux(:) = 0._r8   ! Dongyu
       
     end if
 

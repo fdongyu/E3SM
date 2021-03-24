@@ -49,7 +49,8 @@ module rof_cpl_indices
 
   ! Dongyu
   integer, public :: index_x2r_So_ssh = 0         ! ocn->rof ssh from ocean
-  integer, public :: index_x2r_Foro_saltFlux = 0  ! ocn->rof saltFlux from ocean
+  integer, public :: index_x2r_So_s_ocn2rof = 0   ! ocn->rof salinity from ocean
+  !integer, public :: index_x2r_Foro_saltFlux = 0  ! ocn->rof saltFlux from ocean
 
   !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
   integer, parameter, public :: nt_rtm = 4    ! number of tracers
@@ -116,8 +117,9 @@ contains
     index_x2r_Flrl_Tqsub  = mct_avect_indexra(avtmp,'Flrl_Tqsub')
 
     ! Dongyu
-    index_x2r_So_ssh      = mct_avect_indexra(avtmp, 'So_ssh')
-    index_x2r_Foro_saltFlux = mct_avect_indexra(avtmp, 'Foro_saltFlux')
+    index_x2r_So_ssh       = mct_avect_indexra(avtmp, 'So_ssh')
+    index_x2r_So_s_ocn2rof = mct_avect_indexra(avtmp, 'So_s_ocn2rof')
+    !index_x2r_Foro_saltFlux = mct_avect_indexra(avtmp, 'Foro_saltFlux')
 
     if (rof_heat) then
       index_x2r_Sa_tbot     = mct_avect_indexra(avtmp,'Sa_tbot')

@@ -2337,10 +2337,10 @@ contains
    ! salinity, normal velocity, salt flux
    real (kind=RKIND), dimension(:,:,:), pointer :: activeTracers
    real (kind=RKIND), dimension(:,:), pointer :: normalVelocity
-   !real (kind=RKIND), dimension(:,:), allocatable :: salt_flux
    real (kind=RKIND), dimension(:), allocatable :: salt_flux
+   real (kind=RKIND), dimension(:), allocatable :: salinity_rof
    integer, pointer :: indexS
-   real(kind=RKIND) :: sumS, salt_flux_lyr 
+   real(kind=RKIND) :: sumS, salt_flux_lyr, sumS_rof, salinity_rof_lyr
 
 
    logical, pointer :: frazilIceActive,          &
@@ -2414,21 +2414,19 @@ contains
      call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
      call mpas_pool_get_dimension(tracersPool, 'index_salinity', indexS)
  
-     !allocate(salt_flux(nVertLevels, nCellsSolve))
-     !salt_flux = 0
-     !do k = 1, nVertLevels
-     !   do i = 1, nCellsSolve
-     !      ! Find boundary cell
-     !      if (boundaryCell(k, i) == 1) then
-     !         ! Find boundary edge
-     !         do iEdge = 1, nEdgesOnCell(i)
-     !            if ( boundaryEdge(k, edgesOnCell(i, iEdge) )  == 1 ) then    
-     !               salt_flux(k,i) = normalVelocity(k, iEdge) * activeTracers(indexS, k, i)
-     !            end if
-     !         enddo
-     !      end if
-     !   enddo
-     !enddo 
+     allocate(salinity_rof(nCellsSolve))
+     salinity_rof = 0.0_RKIND
+     do i = 1, nCellsSolve
+        !! Find boundary cell
+        !if (boundaryCell(1, i) == 1) then
+           sumS_rof = 0.0_RKIND
+           do k = 1,maxLevelCell(i)
+              salinity_rof_lyr = activeTracers(indexS, k, i)
+              sumS_rof = sumS_rof + salinity_rof_lyr
+           enddo
+           salinity_rof(i) = sumS_rof / maxLevelCell(i)
+        !end if
+     enddo 
 
      allocate(salt_flux(nCellsSolve))
      salt_flux = 0.0_RKIND
@@ -2508,8 +2506,9 @@ contains
        o2x_o % rAttr(index_o2x_So_dhdx, n) = filteredSSHGradientZonal(i)
        o2x_o % rAttr(index_o2x_So_dhdy, n) = filteredSSHGradientMeridional(i)
 
-       o2x_o % rAttr(index_o2x_So_ssh, n) = ssh(i) ! Dongyu
-       o2x_o % rAttr(index_o2x_Foro_saltFlux, n) = salt_flux(i) ! Dongyu
+       o2x_o % rAttr(index_o2x_So_ssh, n)        = ssh(i)          ! Dongyu
+       o2x_o % rAttr(index_o2x_So_s_ocn2rof, n)  = salinity_rof(i) ! Dongyu salinity as state variable
+       !o2x_o % rAttr(index_o2x_Foro_saltFlux, n) = salt_flux(i)    ! Dongyu
 
        if ( frazilIceActive ) then
           ! negative when frazil ice can be melted
@@ -2596,7 +2595,8 @@ contains
 
      end do
 
-     deallocate(salt_flux)  ! Dongyu
+     deallocate(salt_flux)    ! Dongyu
+     deallocate(salinity_rof) ! Dongyu
      block_ptr => block_ptr % next
    end do
 
