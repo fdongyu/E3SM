@@ -164,8 +164,9 @@ module RunoffMod
 
      real(r8), pointer :: ssh(:)        ! Dongyu
      real(r8), pointer :: s_ocn2rof(:)  ! Dongyu
+     real(r8), pointer :: yr(:,:)       ! Dongyu water depth
+     real(r8), pointer :: yr_nt1(:)     ! Dongyu
      !real(r8), pointer :: saltFlux(:)  ! Dongyu
-     real(r8), pointer :: bbox(:)      ! Dongyu add bounding box [-95.40,-94.49,28.8,29.9]
      
   end type runoff_flow
 
@@ -255,6 +256,7 @@ module RunoffMod
      real(r8), pointer :: frac(:)      ! fraction of cell included in the study area, [-]
      real(r8), pointer :: domainfrac(:)! fraction of cell included in the study area from domain file, [-]
      logical , pointer :: euler_calc(:)! flag for calculating tracers in euler
+     integer , pointer :: ocn_rof_coupling_ID(:)  ! Dongyu ocn rof 2-way coupling ID, 0=off, 1=on
 
      ! hillslope properties
      real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded) 
@@ -614,8 +616,10 @@ contains
              rtmCTL%qgwl(begr:endr,nt_rtm),       &
              rtmCTL%qdto(begr:endr,nt_rtm),       &
              rtmCTL%qdem(begr:endr,nt_rtm),       & 
-             rtmCTL%ssh(begr:endr),               &
-             rtmCTL%s_ocn2rof(begr:endr),         &
+             rtmCTL%yr(begr:endr,nt_rtm),         & ! ocn rof two way coupling
+             rtmCTL%yr_nt1(begr:endr),            & ! ocn rof two way coupling
+             rtmCTL%ssh(begr:endr),               & ! ocn rof two way coupling
+             rtmCTL%s_ocn2rof(begr:endr),         & ! ocn rof two way coupling
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'

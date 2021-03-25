@@ -1,4 +1,4 @@
-!-----------------------------------------------------------------------
+
 !
 MODULE MOSART_physics_mod
 ! Description: core code of MOSART. Can be incoporated within any land model via a interface module
@@ -13,7 +13,7 @@ MODULE MOSART_physics_mod
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
-  use RtmVar        , only : iulog, barrier_timers, wrmflag, inundflag, sediflag, heatflag, rstraflag
+  use RtmVar        , only : iulog, barrier_timers, wrmflag, inundflag, sediflag, heatflag, rstraflag, use_ocn_rof_two_way ! Dongyu
   use RunoffMod     , only : Tctl, TUnit, TRunoff, Theat, TPara, rtmCTL, &
                              SMatP_upstrm, avsrc_upstrm, avdst_upstrm, SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm
   use MOSART_heat_mod
@@ -934,11 +934,19 @@ MODULE MOSART_physics_mod
        TRunoff%vr(iunit,nt) = 0._r8
        TRunoff%erout(iunit,nt) = -TRunoff%erin(iunit,nt)-TRunoff%erlateral(iunit,nt)
     else
-       if(rtmCTL%mask(iunit) .eq. 3) then !If this channel is at basin outlet (downstream is ocean), use the KW method
+       ! Dongyu when ocn rof two-way coupling is on, use DW in the specified outlets
+       if ( .not. use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 ) then !If this channel is at basin outlet (downstream is ocean), use the KW method
+          call Routing_KW(iunit, nt, theDeltaT)
+       elseif ( use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 .and. TUnit%ocn_rof_coupling_ID(iunit) .eq. 0 ) then
           call Routing_KW(iunit, nt, theDeltaT)
        else
           if(nt == nt_nliq) then
-
+              ! Dongyu check
+              !if (masterproc) then
+              !if ( rtmCTL%mask(iunit) .eq. 3) then
+              !   write (6,*) 'lon, lat, mask, TUnit%rdepth, TRunoff%yr(iunit), TRunoff%yr_dstrm  ', rtmCTL%lonc(iunit), rtmCTL%latc(iunit), rtmCTL%mask(iunit), TUnit%rdepth(iunit), TRunoff%yr(iunit, 1), TRunoff%yr_dstrm(iunit)
+              !end if
+              !end if
               if(TRunoff%rslp_energy(iunit) >= TINYVALUE) then ! flow is from current channel to downstream
                 TRunoff%vr(iunit,nt) = CRVRMAN(TRunoff%rslp_energy(iunit), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
                 TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
@@ -1137,6 +1145,14 @@ MODULE MOSART_physics_mod
     y_c = TRunoff%yr(iunit_,nt_nliq)
     len_c = TUnit%rlen(iunit_)
     slp_c = TUnit%rslp(iunit_)
+
+    ! Dongyu assign ocn's water depth to the dstrm component of the specified outlet cell 
+    if (use_ocn_rof_two_way) then
+       if ( (rtmCTL%mask(iunit_) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit_) .eq. 1) ) then
+          TRunoff%yr_dstrm(iunit_) = TUnit%rdepth(iunit_) + rtmCTL%ssh(iunit_) + 0.43 ! offset adjusted to MSL
+       end if
+    end if
+
     y_down = TRunoff%yr_dstrm(iunit_)
     len_down = TUnit%rlen_dstrm(iunit_)
     slp_down = TUnit%rslp_dstrm(iunit_)

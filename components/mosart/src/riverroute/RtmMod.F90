@@ -2544,6 +2544,7 @@ contains
     rtmCTL%wt      = TRunoff%wt
     rtmCTL%wr      = TRunoff%wr
     rtmCTL%erout   = TRunoff%erout
+    rtmCTL%yr      = TRunoff%yr     ! Dongyu update water depth
 
     ! If inundation scheme is turned on :
     if (inundflag .and. Tctl%OPT_inund .eq. 1 ) then
@@ -3763,6 +3764,17 @@ contains
      if (masterproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
      call shr_sys_flush(iulog)
 
+     ! Dongyu define outlets where ocn rof two-way coupling is on
+     !if ( Tctl%RoutingMethod == 4 .and. use_ocn_rof_two_way) then
+     if ( use_ocn_rof_two_way ) then
+        allocate(TUnit%ocn_rof_coupling_ID(begr:endr))
+        ier = pio_inq_varid(ncid, name='ocn_rof_coupling_ID', vardesc=vardesc)
+        call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ocn_rof_coupling_ID, ier)
+        if (masterproc) write(iulog,FORMR) trim(subname),' read ocn_rof_coupling_ID',minval(Tunit%ocn_rof_coupling_ID),maxval(Tunit%ocn_rof_coupling_ID)
+        call shr_sys_flush(iulog)
+     end if
+
+
      allocate(TUnit%nr(begr:endr))
   
      if (inundflag) then
@@ -4130,16 +4142,6 @@ contains
 
      allocate (TPara%c_twid(begr:endr))
      TPara%c_twid = 1.0_r8
-
-     ! Dongyu
-     if ( Tctl%RoutingMethod == 4 ) then
-        allocate (rtmCTL%bbox(4))
-        ! ICoM domain
-        rtmCTL%bbox(1) = -77.5
-        rtmCTL%bbox(2) = -75
-        rtmCTL%bbox(3) = 35
-        rtmCTL%bbox(4) = 40
-     end if
 
      if ( Tctl%RoutingMethod == 4 ) then       ! Use diffusion wave method in channel routing computation.
         allocate (TRunoff%rslp_energy(begr:endr))

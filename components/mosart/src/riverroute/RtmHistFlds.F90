@@ -256,6 +256,9 @@ contains
       call RtmHistAddfld (fname='s_ocn2rof', units='PSU',  &
            avgflag='A', long_name='Salinity from ocean model ', &
            ptr_rof=rtmCTL%s_ocn2rof, default='active')
+      call RtmHistAddfld (fname='Main_Channel_Water_Depth'//'_'//trim(rtm_tracers(1)), units='m',  &
+           avgflag='A', long_name='MOSART main channel water depth:'//trim(rtm_tracers(1)), &
+           ptr_rof=rtmCTL%yr_nt1, default='active')
       !call RtmHistAddfld (fname='saltFlux', units='PSU ms-1',  &
       !     avgflag='A', long_name='MOSART salt Flux from ocean ', &
       !     ptr_rof=rtmCTL%saltFlux, default='active')
@@ -321,6 +324,8 @@ contains
 
     rtmCTL%qdem_nt1(:)       = rtmCTL%qdem(:,1)
     rtmCTL%qdem_nt2(:)       = rtmCTL%qdem(:,2)
+
+    rtmCTL%yr_nt1(:)         = rtmCTL%yr(:,1)  ! Dongyu water depth
 
     if(sediflag) then
         rtmCTL%runofflnd_nt3(:)  = rtmCTL%runofflnd(:,3)
