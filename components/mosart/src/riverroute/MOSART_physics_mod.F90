@@ -963,28 +963,53 @@ MODULE MOSART_physics_mod
               elseif(TRunoff%rslp_energy(iunit) <= -TINYVALUE) then ! flow is from downstream to current channel
                  TRunoff%vr(iunit,nt) = -CRVRMAN(abs(TRunoff%rslp_energy(iunit)), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
                  TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
-                 if(rtmCTL%nUp_dstrm(iunit) > 1) then
-                     if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit) <= TINYVALUE) then! much negative inflow from upstream,
-                         TRunoff%vr(iunit,nt) = 0._r8
-                         TRunoff%erout(iunit,nt) = 0._r8
-                     elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit)- TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
-                        TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT / rtmCTL%nUp_dstrm(iunit)
-                       if(TRunoff%mr(iunit,nt) > TINYVALUE) then
-                           TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                 if ( use_ocn_rof_two_way ) then  ! Dongyu allow flow from ocn
+                    if(rtmCTL%nUp_dstrm(iunit) > 1) then
+                        if( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit) <= TINYVALUE) then! much negative inflow from upstream,
+                            TRunoff%vr(iunit,nt) = 0._r8
+                            TRunoff%erout(iunit,nt) = 0._r8
+                        elseif( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit)- TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT / rtmCTL%nUp_dstrm(iunit)
+                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                           end if
+                        end if    
+                    else
+                        if( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream,
+                           TRunoff%vr(iunit,nt) = 0._r8
+                           TRunoff%erout(iunit,nt) = 0._r8
+                        elseif( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt) &
+                          - TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT
+                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                           end if
                         end if
-                     end if    
+                    end if                 
                  else
-                     if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream,
-                         TRunoff%vr(iunit,nt) = 0._r8
-                         TRunoff%erout(iunit,nt) = 0._r8
-                     elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt) &
-                       - TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
-                        TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT
-                       if(TRunoff%mr(iunit,nt) > TINYVALUE) then
-                           TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                    if(rtmCTL%nUp_dstrm(iunit) > 1) then
+                        if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit) <= TINYVALUE) then! much negative inflow from upstream,
+                            TRunoff%vr(iunit,nt) = 0._r8
+                            TRunoff%erout(iunit,nt) = 0._r8
+                        elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit)- TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT / rtmCTL%nUp_dstrm(iunit)
+                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                           end if
                         end if
-                     end if
-                 end if                 
+                    else
+                        if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream,
+                           TRunoff%vr(iunit,nt) = 0._r8
+                           TRunoff%erout(iunit,nt) = 0._r8
+                        elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt) &
+                          - TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT
+                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                           end if
+                        end if
+                    end if  
+                 end if
                  !TRunoff%vr(iunit,nt) = 0._r8
                  !TRunoff%erout(iunit,nt) = 0._r8
               else  ! no flow between current channel and downstream

@@ -256,13 +256,10 @@ contains
       call RtmHistAddfld (fname='s_ocn2rof', units='PSU',  &
            avgflag='A', long_name='Salinity from ocean model ', &
            ptr_rof=rtmCTL%s_ocn2rof, default='active')
-      call RtmHistAddfld (fname='Main_Channel_Water_Depth'//'_'//trim(rtm_tracers(1)), units='m',  &
+    endif
+    call RtmHistAddfld (fname='Main_Channel_Water_Depth'//'_'//trim(rtm_tracers(1)), units='m',  &
            avgflag='A', long_name='MOSART main channel water depth:'//trim(rtm_tracers(1)), &
            ptr_rof=rtmCTL%yr_nt1, default='active')
-      !call RtmHistAddfld (fname='saltFlux', units='PSU ms-1',  &
-      !     avgflag='A', long_name='MOSART salt Flux from ocean ', &
-      !     ptr_rof=rtmCTL%saltFlux, default='active')
-    endif
 
     call RtmHistPrintflds()
 

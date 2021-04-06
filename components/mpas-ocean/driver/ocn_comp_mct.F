@@ -2333,6 +2333,7 @@ contains
    integer, dimension(:,:), pointer :: edgesOnCell
    integer, dimension(:),   pointer :: maxLevelCell
    real(kind=RKIND), dimension(:), pointer   :: dvEdge 
+   real(kind=RKIND), dimension(:), pointer ::  areaCell
    integer, pointer :: nVertLevels
    ! salinity, normal velocity, salt flux
    real (kind=RKIND), dimension(:,:,:), pointer :: activeTracers
@@ -2409,19 +2410,20 @@ contains
      call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevels)
      call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
      call mpas_pool_get_array(meshPool, 'dvEdge', dvEdge)
+     call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
 
      call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracers, 1)
      call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
      call mpas_pool_get_dimension(tracersPool, 'index_salinity', indexS)
  
      allocate(salinity_rof(nCellsSolve))
-     salinity_rof = 0.0_RKIND
+     salinity_rof = 0.0_RKIND  ! salinity concentration PSU / m3
      do i = 1, nCellsSolve
         !! Find boundary cell
         !if (boundaryCell(1, i) == 1) then
            sumS_rof = 0.0_RKIND
            do k = 1,maxLevelCell(i)
-              salinity_rof_lyr = activeTracers(indexS, k, i)
+              salinity_rof_lyr = activeTracers(indexS, k, i) / layerThickness(k,i) / areaCell(i)
               sumS_rof = sumS_rof + salinity_rof_lyr
            enddo
            salinity_rof(i) = sumS_rof / maxLevelCell(i)
