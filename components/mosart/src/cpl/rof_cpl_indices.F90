@@ -53,7 +53,7 @@ module rof_cpl_indices
   !integer, public :: index_x2r_Foro_saltFlux = 0  ! ocn->rof saltFlux from ocean
 
   !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
-  integer, parameter, public :: nt_rtm =  4    ! number of tracers
+  integer, parameter, public :: nt_rtm = 4    ! number of tracers
   character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE','MUD','SAN'/)
   integer, parameter, public :: nt_nliq = 1    ! number of tracers
   integer, parameter, public :: nt_nice = 2    ! number of tracers
