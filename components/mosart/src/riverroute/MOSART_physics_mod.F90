@@ -426,6 +426,15 @@ MODULE MOSART_physics_mod
              end do
           enddo
 
+          ! Dongyu add dstrm BC for rof ocn coupling
+          if (use_ocn_rof_two_way) then
+             do iunit=rtmCTL%begr,rtmCTL%endr
+                if ( (rtmCTL%mask(iunit) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit) .eq. 1) ) then
+                   TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%ssh(iunit) + 0.43 ! assign ocn's water depth to the dstrm component of the specified outlet cell 
+                end if
+             end do
+          end if
+
        end if
 #endif
        call t_stopf('mosartr_SMeroutUp')    
@@ -1170,13 +1179,6 @@ MODULE MOSART_physics_mod
     y_c = TRunoff%yr(iunit_,nt_nliq)
     len_c = TUnit%rlen(iunit_)
     slp_c = TUnit%rslp(iunit_)
-
-    ! Dongyu assign ocn's water depth to the dstrm component of the specified outlet cell 
-    if (use_ocn_rof_two_way) then
-       if ( (rtmCTL%mask(iunit_) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit_) .eq. 1) ) then
-          TRunoff%yr_dstrm(iunit_) = TUnit%rdepth(iunit_) + rtmCTL%ssh(iunit_) + 0.43 ! offset adjusted to MSL
-       end if
-    end if
 
     y_down = TRunoff%yr_dstrm(iunit_)
     len_down = TUnit%rlen_dstrm(iunit_)
