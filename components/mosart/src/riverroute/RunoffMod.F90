@@ -166,7 +166,8 @@ module RunoffMod
      real(r8), pointer :: s_ocn2rof(:)  ! Dongyu
      real(r8), pointer :: yr(:,:)       ! Dongyu water depth
      real(r8), pointer :: yr_nt1(:)     ! Dongyu
-     !real(r8), pointer :: saltFlux(:)  ! Dongyu
+     real(r8), pointer :: volr_nt5(:)      ! Dongyu salinity 
+     real(r8), pointer :: runofflnd_nt5(:) ! Dongyu salinity
      
   end type runoff_flow
 
@@ -620,6 +621,8 @@ contains
              rtmCTL%yr_nt1(begr:endr),            & ! ocn rof two way coupling
              rtmCTL%ssh(begr:endr),               & ! ocn rof two way coupling
              rtmCTL%s_ocn2rof(begr:endr),         & ! ocn rof two way coupling
+             rtmCTL%runofflnd_nt5(begr:endr),     & ! salinity
+             rtmCTL%volr_nt5(begr:endr),          & ! salinity
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -683,8 +686,6 @@ contains
       rtmCTL%templand_Ttrib(:)  = spval
       rtmCTL%templand_Tchanr(:) = spval
 
-      !rtmCTL%ssh(:)      = 0._r8   ! Dongyu
-      !rtmCTL%saltFlux(:) = 0._r8   ! Dongyu
       
     end if
 

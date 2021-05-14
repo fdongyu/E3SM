@@ -261,6 +261,16 @@ contains
            avgflag='A', long_name='MOSART main channel water depth:'//trim(rtm_tracers(1)), &
            ptr_rof=rtmCTL%yr_nt1, default='active')
 
+    ! Dongyu add salinity
+    if (use_ocn_rof_two_way .and. sediflag) then
+      call RtmHistAddfld(fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(5)), units='PSU/s',  &
+           avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(5)), &
+           ptr_rof=rtmCTL%runofflnd_nt5, default='active')
+      call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(5)), units='PSU',  &
+           avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(5)), &
+           ptr_rof=rtmCTL%volr_nt5, default='active')
+    endif 
+
     call RtmHistPrintflds()
 
   end subroutine RtmHistFldsInit
@@ -323,6 +333,11 @@ contains
     rtmCTL%qdem_nt2(:)       = rtmCTL%qdem(:,2)
 
     rtmCTL%yr_nt1(:)         = rtmCTL%yr(:,1)  ! Dongyu water depth
+    ! Dongyu salinity
+    if (use_ocn_rof_two_way .and. sediflag) then
+        rtmCTL%runofflnd_nt5(:)  = rtmCTL%runofflnd(:,5)
+        rtmCTL%volr_nt5(:)       = rtmCTL%volr(:,5)
+    end if
 
     if(sediflag) then
         rtmCTL%runofflnd_nt3(:)  = rtmCTL%runofflnd(:,3)
