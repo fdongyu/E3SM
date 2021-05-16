@@ -262,7 +262,7 @@ contains
            ptr_rof=rtmCTL%yr_nt1, default='active')
 
     ! Dongyu add salinity
-    if (use_ocn_rof_two_way .and. sediflag) then
+    if (use_ocn_rof_two_way) then
       call RtmHistAddfld(fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(5)), units='PSU/s',  &
            avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(5)), &
            ptr_rof=rtmCTL%runofflnd_nt5, default='active')
