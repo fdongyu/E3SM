@@ -334,7 +334,7 @@ contains
 
     rtmCTL%yr_nt1(:)         = rtmCTL%yr(:,1)  ! Dongyu water depth
     ! Dongyu salinity
-    if (use_ocn_rof_two_way .and. sediflag) then
+    if (use_ocn_rof_two_way) then
         rtmCTL%runofflnd_nt5(:)  = rtmCTL%runofflnd(:,5)
         rtmCTL%volr_nt5(:)       = rtmCTL%volr(:,5)
     end if
