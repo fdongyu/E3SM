@@ -430,7 +430,7 @@ MODULE MOSART_physics_mod
           if (use_ocn_rof_two_way) then
              do iunit=rtmCTL%begr,rtmCTL%endr
                 if ( (rtmCTL%mask(iunit) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit) .eq. 1) ) then
-                   TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%ssh(iunit) + 0.43 ! assign ocn's water depth to the dstrm component of the specified outlet cell 
+                   TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%ssh(iunit) + Tunit%vdatum_conversion(iunit) ! assign ocn's water depth to the dstrm component of the specified outlet cell 
                 end if
              end do
           end if
