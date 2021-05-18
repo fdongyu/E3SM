@@ -3770,13 +3770,18 @@ contains
      if (masterproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
      call shr_sys_flush(iulog)
 
-     ! Dongyu define outlets where ocn rof two-way coupling is on
-     !if ( Tctl%RoutingMethod == 4 .and. use_ocn_rof_two_way) then
+     ! Dongyu define outlets and relevant parameters where ocn rof two-way coupling is on
      if ( use_ocn_rof_two_way ) then
         allocate(TUnit%ocn_rof_coupling_ID(begr:endr))
         ier = pio_inq_varid(ncid, name='ocn_rof_coupling_ID', vardesc=vardesc)
         call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ocn_rof_coupling_ID, ier)
         if (masterproc) write(iulog,FORMR) trim(subname),' read ocn_rof_coupling_ID',minval(Tunit%ocn_rof_coupling_ID),maxval(Tunit%ocn_rof_coupling_ID)
+        call shr_sys_flush(iulog)
+
+        allocate(TUnit%vdatum_conversion(begr:endr))   
+        ier = pio_inq_varid(ncid, name='vdatum_conversion', vardesc=vardesc)
+        call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%vdatum_conversion, ier)
+        if (masterproc) write(iulog,FORMR) trim(subname),' read vdatum_conversion',minval(Tunit%vdatum_conversion),maxval(Tunit%vdatum_conversion)
         call shr_sys_flush(iulog)
      end if
 
