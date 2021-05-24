@@ -1,4 +1,4 @@
-
+!-----------------------------------------------------------------------
 !
 MODULE MOSART_physics_mod
 ! Description: core code of MOSART. Can be incoporated within any land model via a interface module
@@ -799,7 +799,11 @@ MODULE MOSART_physics_mod
     else if(Tctl%RoutingMethod == 3) then
        call Routing_THREW(iunit, nt, theDeltaT)
     else if(Tctl%RoutingMethod == 4) then
-       call Routing_DW(iunit, nt, theDeltaT)
+       if ( use_ocn_rof_two_way ) then
+          call Routing_DW_ocn_rof_two_way(iunit, nt, theDeltaT)
+       else
+          call Routing_DW(iunit, nt, theDeltaT)
+       end if
     else
        print*, "Please check the routing method! There are only 4 methods available."
     end if
@@ -943,19 +947,11 @@ MODULE MOSART_physics_mod
        TRunoff%vr(iunit,nt) = 0._r8
        TRunoff%erout(iunit,nt) = -TRunoff%erin(iunit,nt)-TRunoff%erlateral(iunit,nt)
     else
-       ! Dongyu when ocn rof two-way coupling is on, use DW in the specified outlets
-       if ( .not. use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 ) then !If this channel is at basin outlet (downstream is ocean), use the KW method
-          call Routing_KW(iunit, nt, theDeltaT)
-       elseif ( use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 .and. TUnit%ocn_rof_coupling_ID(iunit) .eq. 0 ) then
+       if(rtmCTL%mask(iunit) .eq. 3) then !If this channel is at basin outlet (downstream is ocean), use the KW method
           call Routing_KW(iunit, nt, theDeltaT)
        else
           if(nt == nt_nliq) then
-              ! Dongyu check
-              !if (masterproc) then
-              !if ( rtmCTL%mask(iunit) .eq. 3) then
-              !   write (6,*) 'lon, lat, mask, TUnit%rdepth, TRunoff%yr(iunit), TRunoff%yr_dstrm  ', rtmCTL%lonc(iunit), rtmCTL%latc(iunit), rtmCTL%mask(iunit), TUnit%rdepth(iunit), TRunoff%yr(iunit, 1), TRunoff%yr_dstrm(iunit)
-              !end if
-              !end if
+
               if(TRunoff%rslp_energy(iunit) >= TINYVALUE) then ! flow is from current channel to downstream
                 TRunoff%vr(iunit,nt) = CRVRMAN(TRunoff%rslp_energy(iunit), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
                 TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
@@ -972,53 +968,28 @@ MODULE MOSART_physics_mod
               elseif(TRunoff%rslp_energy(iunit) <= -TINYVALUE) then ! flow is from downstream to current channel
                  TRunoff%vr(iunit,nt) = -CRVRMAN(abs(TRunoff%rslp_energy(iunit)), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
                  TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
-                 if ( use_ocn_rof_two_way ) then  ! Dongyu allow flow from ocn
-                    if(rtmCTL%nUp_dstrm(iunit) > 1) then
-                        if( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit) <= TINYVALUE) then! much negative inflow from upstream,
-                            TRunoff%vr(iunit,nt) = 0._r8
-                            TRunoff%erout(iunit,nt) = 0._r8
-                        elseif( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit)- TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
-                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT / rtmCTL%nUp_dstrm(iunit)
-                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
-                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
-                           end if
-                        end if    
-                    else
-                        if( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream,
-                           TRunoff%vr(iunit,nt) = 0._r8
-                           TRunoff%erout(iunit,nt) = 0._r8
-                        elseif( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt) &
-                          - TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
-                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT
-                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
-                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
-                           end if
+                 if(rtmCTL%nUp_dstrm(iunit) > 1) then
+                     if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit) <= TINYVALUE) then! much negative inflow from upstream,
+                         TRunoff%vr(iunit,nt) = 0._r8
+                         TRunoff%erout(iunit,nt) = 0._r8
+                     elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit)- TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                        TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT / rtmCTL%nUp_dstrm(iunit)
+                       if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                           TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
                         end if
-                    end if                 
+                     end if    
                  else
-                    if(rtmCTL%nUp_dstrm(iunit) > 1) then
-                        if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit) <= TINYVALUE) then! much negative inflow from upstream,
-                            TRunoff%vr(iunit,nt) = 0._r8
-                            TRunoff%erout(iunit,nt) = 0._r8
-                        elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit)- TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
-                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT / rtmCTL%nUp_dstrm(iunit)
-                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
-                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
-                           end if
+                     if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream,
+                         TRunoff%vr(iunit,nt) = 0._r8
+                         TRunoff%erout(iunit,nt) = 0._r8
+                     elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt) &
+                       - TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                        TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT
+                       if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                           TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
                         end if
-                    else
-                        if(TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream,
-                           TRunoff%vr(iunit,nt) = 0._r8
-                           TRunoff%erout(iunit,nt) = 0._r8
-                        elseif(TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt) &
-                          - TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
-                           TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT
-                           if(TRunoff%mr(iunit,nt) > TINYVALUE) then
-                              TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
-                           end if
-                        end if
-                    end if  
-                 end if
+                     end if
+                 end if                 
                  !TRunoff%vr(iunit,nt) = 0._r8
                  !TRunoff%erout(iunit,nt) = 0._r8
               else  ! no flow between current channel and downstream
@@ -1091,6 +1062,134 @@ MODULE MOSART_physics_mod
    ! end if  
 
   end subroutine Routing_DW
+
+!-----------------------------------------------------------------------
+
+  subroutine Routing_DW_ocn_rof_two_way(iunit, nt, theDeltaT)
+  ! !DESCRIPTION: diffusion wave routing method that considers coupling with ocn model
+    implicit none
+    integer, intent(in) :: iunit, nt
+    real(r8), intent(in) :: theDeltaT
+    character(len=*),parameter :: subname = '(Routing_DW_ocn_rof_two_way)'
+
+    integer  :: k, myflag
+    real(r8) :: temp_gwl, temp_dwr, temp_gwl0
+    real(r8) :: temp1, temp2, w_temp
+    real(r8 ) :: y_c, len_c, slp_c             ! Water depth (m), length (m) and bed slope (dimensionless) of the current channel.
+    real(r8 ) :: y_down, len_down, slp_down    ! Water depth (m), length (m) and bed slope (dimensionless) of the downstream channel.
+
+    ! estimate the inflow from upstream units
+    TRunoff%erin(iunit,nt) = 0._r8
+
+    TRunoff%erin(iunit,nt) = TRunoff%erin(iunit,nt) - TRunoff%eroutUp(iunit,nt)
+
+    ! estimate the outflow
+    if(TUnit%rlen(iunit) <= 0._r8) then ! no river network, no channel routing
+       TRunoff%vr(iunit,nt) = 0._r8
+       TRunoff%erout(iunit,nt) = -TRunoff%erin(iunit,nt)-TRunoff%erlateral(iunit,nt)
+    elseif(TUnit%areaTotal2(iunit)/TUnit%rwidth(iunit)/TUnit%rlen(iunit) > 1e6_r8) then ! skip the channel routing if possible numerical instability
+       TRunoff%vr(iunit,nt) = 0._r8
+       TRunoff%erout(iunit,nt) = -TRunoff%erin(iunit,nt)-TRunoff%erlateral(iunit,nt)
+    else
+       ! Dongyu when ocn rof two-way coupling is on, use DW in the specified outlets
+       if ( .not. use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 ) then !If this channel is at basin outlet (downstream is ocean), use the KW method
+          call Routing_KW(iunit, nt, theDeltaT)
+       elseif ( use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 .and. TUnit%ocn_rof_coupling_ID(iunit) .eq. 0 ) then
+          call Routing_KW(iunit, nt, theDeltaT)
+       else
+          if(nt == nt_nliq) then
+              if(TRunoff%rslp_energy(iunit) >= TINYVALUE) then ! flow is from current channel to downstream
+                TRunoff%vr(iunit,nt) = CRVRMAN(TRunoff%rslp_energy(iunit), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
+                TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
+                if(TRunoff%erin(iunit,nt)*theDeltaT + TRunoff%wr(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream, 
+                   TRunoff%vr(iunit,nt) = 0._r8
+                   TRunoff%erout(iunit,nt) = 0._r8
+                elseif(TRunoff%erout(iunit,nt) <= -TINYVALUE .and. TRunoff%wr(iunit,nt) + &
+                   (TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt)) * theDeltaT < TINYVALUE) then
+                   TRunoff%erout(iunit,nt) = -(TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%wr(iunit,nt)*0.95_r8 / theDeltaT)
+                   if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                      TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                   end if
+                end if
+              elseif(TRunoff%rslp_energy(iunit) <= -TINYVALUE) then ! flow is from downstream to current channel
+                 TRunoff%vr(iunit,nt) = -CRVRMAN(abs(TRunoff%rslp_energy(iunit)), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
+                 TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
+                 ! Dongyu two-way coupling update: allow flow from ocn
+                 if(rtmCTL%nUp_dstrm(iunit) > 1) then
+                     if( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit) <= TINYVALUE) then! much negative inflow from upstream,
+                         TRunoff%vr(iunit,nt) = 0._r8
+                         TRunoff%erout(iunit,nt) = 0._r8
+                     elseif( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt)/rtmCTL%nUp_dstrm(iunit)- TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                         TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT / rtmCTL%nUp_dstrm(iunit)
+                         if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                            TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                         end if
+                     end if
+                 else
+                     if( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erin_dstrm(iunit,nt)*theDeltaT + TRunoff%wr_dstrm(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream,
+                        TRunoff%vr(iunit,nt) = 0._r8
+                        TRunoff%erout(iunit,nt) = 0._r8
+                     elseif( TUnit%ocn_rof_coupling_ID(iunit) .ne. 1 .and. TRunoff%erout(iunit,nt) >= TINYVALUE .and. TRunoff%wr_dstrm(iunit,nt) &
+                       - TRunoff%erout(iunit,nt) * theDeltaT < TINYVALUE) then
+                        TRunoff%erout(iunit,nt) = TRunoff%wr_dstrm(iunit,nt)*0.95_r8 / theDeltaT
+                        if(TRunoff%mr(iunit,nt) > TINYVALUE) then
+                           TRunoff%vr(iunit,nt) = -TRunoff%erout(iunit,nt) / TRunoff%mr(iunit,nt)
+                        end if
+                     end if
+                 end if
+              else  ! no flow between current channel and downstream
+                TRunoff%vr(iunit,nt) = 0._r8
+                TRunoff%erout(iunit,nt) = 0._r8
+              end if  
+          else
+            if(TRunoff%erout(iunit,nt_nliq) <= -TINYVALUE) then ! flow is from current channel to downstream
+              TRunoff%erout(iunit,nt) = TRunoff%conc_r(iunit,nt) * TRunoff%erout(iunit,nt_nliq)
+              if(TRunoff%erin(iunit,nt)*theDeltaT + TRunoff%wr(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream, 
+                 TRunoff%erout(iunit,nt) = 0._r8
+              elseif(TRunoff%erout(iunit,nt) <= -TINYVALUE .and. TRunoff%wr(iunit,nt) + &
+                 (TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt)) * theDeltaT < TINYVALUE) then
+                 TRunoff%erout(iunit,nt) = -(TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%wr(iunit,nt)*0.95_r8 / theDeltaT)
+              end if
+
+            elseif(TRunoff%erout(iunit,nt_nliq) >= TINYVALUE) then ! flow is from downstream to current channel
+              TRunoff%erout(iunit,nt) = 0._r8
+            else
+              TRunoff%erout(iunit,nt) = 0._r8
+            end if
+          end if
+       end if
+    end if
+     
+    if(TRunoff%erin(iunit,nt) < -TINYVALUE .and. TRunoff%erout(iunit,nt) < -TINYVALUE) then
+       if((TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt)) * theDeltaT + TRunoff%wr(iunit,nt) < 0._r8) then
+           TRunoff%erout(iunit,nt) = 0._r8
+       end if
+    end if
+
+    temp_dwr = TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt)
+    temp_gwl = TRunoff%qgwl(iunit,nt) * TUnit%area(iunit) * TUnit%frac(iunit)
+    temp_gwl0 = temp_gwl
+    if(abs(temp_gwl) <= TINYVALUE) then
+!       write(iulog,*) 'mosart: ERROR dropping temp_gwl too small'
+!       call shr_sys_abort('mosart: ERROR temp_gwl too small')
+       temp_gwl = 0._r8
+    end if
+    if(temp_gwl < -TINYVALUE) then
+       write(iulog,*) 'mosart: ERROR temp_gwl negative',iunit,nt,TRunoff%qgwl(iunit,nt)
+       call shr_sys_abort('mosart: ERROR temp_gwl negative ')
+       if(TRunoff%wr(iunit,nt) < TINYVALUE) then
+          temp_gwl = 0._r8
+       else
+          if(TRunoff%wr(iunit,nt)/theDeltaT + temp_dwr + temp_gwl < -TINYVALUE) then
+          !write(iulog,*) 'adjust! ', temp_gwl, -(temp_dwr+TRunoff%wr(iunit,nt)/theDeltaT)
+             temp_gwl = -(temp_dwr + TRunoff%wr(iunit,nt) / theDeltaT)
+          end if
+       end if
+    end if
+
+    TRunoff%dwr(iunit,nt) = TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt) + temp_gwl
+
+  end subroutine Routing_DW_ocn_rof_two_way
 
 !-----------------------------------------------------------------------
 
@@ -1179,7 +1278,6 @@ MODULE MOSART_physics_mod
     y_c = TRunoff%yr(iunit_,nt_nliq)
     len_c = TUnit%rlen(iunit_)
     slp_c = TUnit%rslp(iunit_)
-
     y_down = TRunoff%yr_dstrm(iunit_)
     len_down = TUnit%rlen_dstrm(iunit_)
     slp_down = TUnit%rslp_dstrm(iunit_)
