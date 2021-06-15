@@ -144,6 +144,15 @@ module RunoffMod
      real(r8), pointer :: templand_Tqsub_nt2(:)
      real(r8), pointer :: templand_Ttrib_nt2(:)
      real(r8), pointer :: templand_Tchanr_nt2(:)
+
+     real(r8), pointer :: ssh(:)        ! Dongyu
+     real(r8), pointer :: yr_nt1(:)     ! Dongyu
+
+     integer           :: ntime_wl      ! Dongyu NOAA water level data length
+     integer , pointer :: ymd_wl(:)     ! Dongyu NOAA water level year month day
+     integer , pointer :: tod_wl(:)     ! Dongyu NOAA water level time of day
+     real(r8), pointer :: wl(:)         ! Dongyu NOAA water level
+     real(r8)          :: wl_inst       ! Dongyu NOAA instantaneous water level
      
   end type runoff_flow
 
@@ -232,6 +241,8 @@ module RunoffMod
      real(r8), pointer :: frac(:)      ! fraction of cell included in the study area, [-]
      real(r8), pointer :: domainfrac(:)! fraction of cell included in the study area from domain file, [-]
      logical , pointer :: euler_calc(:)! flag for calculating tracers in euler
+     integer , pointer :: ocn_rof_coupling_ID(:)  ! Dongyu ocn rof 2-way coupling ID, 0=off, 1=on
+     real(r8), pointer :: vdatum_conversion(:)    ! Dongyu ocn rof 2-way coupling vertical datum conversion
 
      ! hillslope properties
      real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded) 
@@ -564,6 +575,8 @@ contains
              rtmCTL%qgwl(begr:endr,nt_rtm),       &
              rtmCTL%qdto(begr:endr,nt_rtm),       &
              rtmCTL%qdem(begr:endr,nt_rtm),       & 
+             rtmCTL%yr_nt1(begr:endr),            & ! Dongyu
+             rtmCTL%ssh(begr:endr),               & ! Dongyu
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'

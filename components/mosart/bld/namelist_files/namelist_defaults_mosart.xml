@@ -30,6 +30,7 @@ for the CLM data in the CESM distribution
 <RoutingMethod>1</RoutingMethod>
 <DLevelH2R>5</DLevelH2R>
 <DLevelR>3</DLevelR>
+<use_dnstrm_boundary>.false.</use_dnstrm_boundary>
 
 <decomp_option>'roundrobin'</decomp_option> 
 <smat_option>'Xonly'</smat_option> 
@@ -75,4 +76,6 @@ for the CLM data in the CESM distribution
 <npt_elevProf>11</npt_elevProf>
 <threshold_slpRatio>10.0</threshold_slpRatio>
 
+<!-- dnstrm -->
+<dnstrm_boundary_file>''</dnstrm_boundary_file>
 </namelist_defaults>

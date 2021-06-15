@@ -20,7 +20,7 @@ module RtmMod
                                nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                inst_index, inst_suffix, inst_name, wrmflag, inundflag, &
                                smat_option, decomp_option, barrier_timers, heatflag, sediflag, &
-                               isgrid2d
+                               isgrid2d, use_dnstrm_boundary ! Dongyu
   use RtmFileUtils    , only : getfil, getavu, relavu
   use RtmTimeManager  , only : timemgr_init, get_nstep, get_curr_date, advance_timestep
   use RtmHistFlds     , only : RtmHistFldsInit, RtmHistFldsSet 
@@ -56,6 +56,8 @@ module RtmMod
 ! !PUBLIC MEMBER FUNCTIONS:
   public Rtmini          ! Initialize MOSART grid
   public Rtmrun          ! River routing model
+  public dnstrm_boundary_init ! Dongyu Initialize downstream boundary
+  public dnstrm_boundary_set  ! Dongyu Set downstream boundary
 !
 ! !REVISION HISTORY:
 ! Author: Sam Levis
@@ -255,7 +257,8 @@ contains
          rtmhist_fexcl1,  rtmhist_fexcl2, rtmhist_fexcl3, &
          rtmhist_avgflag_pertape, decomp_option, wrmflag,rstraflag,ngeom,nlayers,rinittemp, &
          inundflag, smat_option, delt_mosart, barrier_timers, &
-         RoutingMethod, DLevelH2R, DLevelR, sediflag, heatflag
+         RoutingMethod, DLevelH2R, DLevelR, sediflag, heatflag, use_dnstrm_boundary ! Dongyu
+
 
     namelist /inund_inparm / opt_inund, &
          opt_truedw, opt_calcnr, nr_max, nr_min, &
@@ -275,6 +278,7 @@ contains
     inundflag   = .false.
     sediflag    = .false.
     heatflag    = .false.
+    use_dnstrm_boundary = .false.  ! Dongyu
     barrier_timers = .false.
     finidat_rtm = ' '
     nrevsn_rtm  = ' '
@@ -360,6 +364,7 @@ contains
     call mpi_bcast (nlayers,        1, MPI_INTEGER, 0, mpicom_rof, ier)
     call mpi_bcast (inundflag,      1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (heatflag,       1, MPI_LOGICAL, 0, mpicom_rof, ier)
+    call mpi_bcast (use_dnstrm_boundary,  1, MPI_LOGICAL, 0, mpicom_rof, ier)  ! Dongyu
     call mpi_bcast (barrier_timers, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
     call mpi_bcast (rtmhist_nhtfrq, size(rtmhist_nhtfrq), MPI_INTEGER,   0, mpicom_rof, ier)
@@ -3446,6 +3451,21 @@ contains
      if (masterproc) write(iulog,FORMR) trim(subname),' read rdepth ',minval(Tunit%rdepth),maxval(Tunit%rdepth)
      call shr_sys_flush(iulog)
 
+     if ( use_dnstrm_boundary ) then  ! Dongyu
+        allocate(TUnit%ocn_rof_coupling_ID(begr:endr))
+        ier = pio_inq_varid(ncid, name='ocn_rof_coupling_ID', vardesc=vardesc)
+        call pio_read_darray(ncid, vardesc, iodesc_int, TUnit%ocn_rof_coupling_ID, ier)
+        if (masterproc) write(iulog,FORMR) trim(subname),' read ocn_rof_coupling_ID',minval(Tunit%ocn_rof_coupling_ID),maxval(Tunit%ocn_rof_coupling_ID)
+        call shr_sys_flush(iulog)
+
+        !allocate(TUnit%vdatum_conversion(begr:endr))
+        !ier = pio_inq_varid(ncid, name='vdatum_conversion', vardesc=vardesc)
+        !call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%vdatum_conversion, ier)
+        !if (masterproc) write(iulog,FORMR) trim(subname),' read vdatum_conversion',minval(Tunit%vdatum_conversion),maxval(Tunit%vdatum_conversion)
+        !call shr_sys_flush(iulog)
+     end if
+
+
      allocate(TUnit%nr(begr:endr))
   
      if (inundflag) then
@@ -4516,6 +4536,113 @@ contains
   end subroutine SubTimestep
 
 !-----------------------------------------------------------------------
+
+! !INTERFACE:
+  subroutine dnstrm_boundary_init
+!
+! !DESCRIPTION:
+! read downstream boundary water level
+! 
+! !ARGUMENTS:
+  implicit none
+!
+! !OTHER LOCAL VARIABLES:
+!EOP
+  type(file_desc_t)  :: ncid                       ! pio file desc
+  type(var_desc_t)   :: vardesc                    ! pio variable desc 
+  type(io_desc_t)    :: iodesc_dbl                 ! pio io desc
+  type(io_desc_t)    :: iodesc_int                 ! pio io desc
+  character(len=256):: dnstrm_boundary_file = ' '  ! dnstrm waterlevel data file 
+  character(len=256):: nlfilename_dnstrm           ! namelist filename
+  logical  :: lexist                               ! File exists
+  integer  :: unitn                                ! unit for namelist file 
+  integer  :: ier                                  ! error code
+  logical           :: found                       ! flag
+  integer  :: timedimid, ntime
+  character(len=*),parameter :: FORMR = '(2A,2g15.7)'
+  character(len=*),parameter :: subname = '(dnstrm_boundary_init)'
+  
+  namelist /dnstrm_inparm / dnstrm_boundary_file
+  nlfilename_dnstrm = "mosart_in"
+  inquire (file = trim(nlfilename_dnstrm), exist = lexist)
+  if ( .not. lexist ) then
+     write(iulog,*) subname // ' ERROR: nlfilename_dnstrm does NOT exist:'&
+          //trim(nlfilename_dnstrm)
+     call shr_sys_abort(trim(subname)//' ERROR nlfilename_dnstrm does not exist')
+  end if
+  if (masterproc) then
+     unitn = getavu()
+     write(iulog,*) 'Read in dnstrm_inparm namelist from: ', trim(nlfilename_dnstrm)
+     open( unitn, file=trim(nlfilename_dnstrm), status='old' )
+     ier = 1
+     do while ( ier /= 0 )
+        read(unitn, dnstrm_inparm, iostat=ier)
+        if (ier < 0) then
+           call shr_sys_abort( subname//' encountered end-of-file on dnstrm_inparm read' )
+        endif
+     end do
+     call relavu( unitn )
+  end if
+
+  call mpi_bcast (dnstrm_boundary_file , len(dnstrm_boundary_file) , MPI_CHARACTER, 0, mpicom_rof, ier)
+  if (masterproc) write (iulog,*) subname, ' dnstrm_boundary_file=', dnstrm_boundary_file
+
+  ! Query water level data
+  call ncd_pio_init()
+  ! Dimension
+  call ncd_pio_openfile (ncid, trim(dnstrm_boundary_file), 0)
+  ier = pio_inq_dimid  (ncid, 'time' , timedimid)
+  ier = pio_inq_dimlen (ncid, timedimid, rtmCTL%ntime_wl)
+  if (masterproc) then
+     write(iulog,*) subname, ' ntime = ', rtmCTL%ntime_wl
+     write(iulog,*) 'Successfully read NOAA data dimensions'
+     call shr_sys_flush(iulog)
+  endif
+
+  ! read NOAA water level data: ymd, tod, waterlevel
+  allocate(rtmCTL%ymd_wl(rtmCTL%ntime_wl))
+  call ncd_io(ncid=ncid, varname='ymd', flag='read', data=rtmCTL%ymd_wl, readvar=found)
+  if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read NOAA ymd')
+  if (masterproc) write(iulog,FORMR) trim(subname),' read NOAA ymd',minval(rtmCTL%ymd_wl),maxval(rtmCTL%ymd_wl)
+  call shr_sys_flush(iulog)
+
+  allocate(rtmCTL%tod_wl(rtmCTL%ntime_wl))
+  call ncd_io(ncid=ncid, varname='tod', flag='read', data=rtmCTL%tod_wl, readvar=found)
+  if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read NOAA tod')
+  if (masterproc) write(iulog,FORMR) trim(subname),' read NOAA tod',minval(rtmCTL%tod_wl),maxval(rtmCTL%tod_wl)
+  call shr_sys_flush(iulog)
+
+  allocate(rtmCTL%wl(rtmCTL%ntime_wl))
+  call ncd_io(ncid=ncid, varname='waterlevel', flag='read', data=rtmCTL%wl, readvar=found)
+  if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read NOAA wl')
+  if (masterproc) write(iulog,FORMR) trim(subname),' read NOAA waterlevel',minval(rtmCTL%wl),maxval(rtmCTL%wl)
+  call shr_sys_flush(iulog)
+
+  call ncd_pio_closefile(ncid)
+
+  end subroutine dnstrm_boundary_init 
+
+!-----------------------------------------------------------------------
+
+  subroutine dnstrm_boundary_set(ymd, tod)
+
+  !! set downstream boundary condition
+  implicit none
+  integer, intent(in) :: ymd, tod
+  character(len=*),parameter :: subname = '(dnstrm_boundary_set)'
+
+  integer :: i                          ! indices 
+
+  do i = 1, rtmCTL%ntime_wl
+     if ( (rtmCTL%ymd_wl(i) .eq. ymd) .and. (rtmCTL%tod_wl(i) .eq. tod) ) then
+        rtmCTL%wl_inst = rtmCTL%wl(i)
+        if(masterproc) write(iulog,*) subname, ' rtmCTL%wl_inst=', rtmCTL%wl_inst
+     end if
+  end do
+  call shr_sys_flush(iulog)
+
+  end subroutine dnstrm_boundary_set
+    
 
 end module RtmMod
 
