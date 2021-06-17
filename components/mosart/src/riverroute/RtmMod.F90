@@ -2438,6 +2438,7 @@ contains
     rtmCTL%yr      = TRunoff%yr
     rtmCTL%rr      = TRunoff%rr
     rtmCTL%erout   = TRunoff%erout
+    rtmCTL%ssh     = TRunoff%ssh  ! Dongyu
 
     ! If inundation scheme is turned on :
     if (inundflag .and. Tctl%OPT_inund .eq. 1 ) then
@@ -3963,7 +3964,12 @@ contains
         THeat%coszen = 0._r8
         
      end if
-    
+
+     if(use_dnstrm_boundary) then  ! Dongyu
+        allocate (TRunoff%ssh(begr:endr))
+        TRunoff%ssh = 0.0_r8
+     end if 
+
      call pio_freedecomp(ncid, iodesc_dbl)
      call pio_freedecomp(ncid, iodesc_int)
      call pio_closefile(ncid)
@@ -4549,16 +4555,14 @@ contains
 ! !OTHER LOCAL VARIABLES:
 !EOP
   type(file_desc_t)  :: ncid                       ! pio file desc
-  type(var_desc_t)   :: vardesc                    ! pio variable desc 
-  type(io_desc_t)    :: iodesc_dbl                 ! pio io desc
-  type(io_desc_t)    :: iodesc_int                 ! pio io desc
   character(len=256):: dnstrm_boundary_file = ' '  ! dnstrm waterlevel data file 
   character(len=256):: nlfilename_dnstrm           ! namelist filename
   logical  :: lexist                               ! File exists
   integer  :: unitn                                ! unit for namelist file 
   integer  :: ier                                  ! error code
   logical           :: found                       ! flag
-  integer  :: timedimid, ntime
+  integer  :: timedimid, nstadimid, ndataid, ndata
+  integer  :: i, j, n
   character(len=*),parameter :: FORMR = '(2A,2g15.7)'
   character(len=*),parameter :: subname = '(dnstrm_boundary_init)'
   
@@ -4593,13 +4597,31 @@ contains
   call ncd_pio_openfile (ncid, trim(dnstrm_boundary_file), 0)
   ier = pio_inq_dimid  (ncid, 'time' , timedimid)
   ier = pio_inq_dimlen (ncid, timedimid, rtmCTL%ntime_wl)
+  ier = pio_inq_dimid  (ncid, 'nstation' , nstadimid)
+  ier = pio_inq_dimlen (ncid, nstadimid, rtmCTL%nstation_wl)
+  ier = pio_inq_dimid  (ncid, 'ndata', ndataid)
+  ier = pio_inq_dimlen (ncid, ndataid, ndata)
   if (masterproc) then
      write(iulog,*) subname, ' ntime = ', rtmCTL%ntime_wl
+     write(iulog,*) subname, ' nstation = ', rtmCTL%nstation_wl
+     write(iulog,*) subname, ' ndata = ', ndata
      write(iulog,*) 'Successfully read NOAA data dimensions'
      call shr_sys_flush(iulog)
   endif
 
-  ! read NOAA water level data: ymd, tod, waterlevel
+  ! read NOAA water level data: lon, lat, ymd, tod, waterlevel
+  allocate(rtmCTL%lon_wl(rtmCTL%nstation_wl))
+  call ncd_io(ncid=ncid, varname='lon', flag='read', data=rtmCTL%lon_wl, readvar=found)
+  if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read NOAA lon')
+  if (masterproc) write(iulog,FORMR) trim(subname),' read NOAA lon',minval(rtmCTL%lon_wl),maxval(rtmCTL%lon_wl)
+  call shr_sys_flush(iulog)
+
+  allocate(rtmCTL%lat_wl(rtmCTL%nstation_wl))
+  call ncd_io(ncid=ncid, varname='lat', flag='read', data=rtmCTL%lat_wl, readvar=found)
+  if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read NOAA lat')
+  if (masterproc) write(iulog,FORMR) trim(subname),' read NOAA lat',minval(rtmCTL%lat_wl),maxval(rtmCTL%lat_wl)
+  call shr_sys_flush(iulog)
+
   allocate(rtmCTL%ymd_wl(rtmCTL%ntime_wl))
   call ncd_io(ncid=ncid, varname='ymd', flag='read', data=rtmCTL%ymd_wl, readvar=found)
   if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read NOAA ymd')
@@ -4612,13 +4634,19 @@ contains
   if (masterproc) write(iulog,FORMR) trim(subname),' read NOAA tod',minval(rtmCTL%tod_wl),maxval(rtmCTL%tod_wl)
   call shr_sys_flush(iulog)
 
-  allocate(rtmCTL%wl(rtmCTL%ntime_wl))
+  allocate(rtmCTL%wl(ndata))
   call ncd_io(ncid=ncid, varname='waterlevel', flag='read', data=rtmCTL%wl, readvar=found)
   if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read NOAA wl')
   if (masterproc) write(iulog,FORMR) trim(subname),' read NOAA waterlevel',minval(rtmCTL%wl),maxval(rtmCTL%wl)
   call shr_sys_flush(iulog)
 
+  !if (masterproc) then
+  !   write (6,*) 'Dongyu check rtmCTL%wl(5850)', rtmCTL%wl(5850)
+  !endif 
+
   call ncd_pio_closefile(ncid)
+
+  allocate (rtmCTL%wl_inst(rtmCTL%nstation_wl))
 
   end subroutine dnstrm_boundary_init 
 
@@ -4631,12 +4659,15 @@ contains
   integer, intent(in) :: ymd, tod
   character(len=*),parameter :: subname = '(dnstrm_boundary_set)'
 
-  integer :: i                          ! indices 
+  integer :: nt, i                        ! indices 
 
-  do i = 1, rtmCTL%ntime_wl
-     if ( (rtmCTL%ymd_wl(i) .eq. ymd) .and. (rtmCTL%tod_wl(i) .eq. tod) ) then
-        rtmCTL%wl_inst = rtmCTL%wl(i)
-        if(masterproc) write(iulog,*) subname, ' rtmCTL%wl_inst=', rtmCTL%wl_inst
+  do nt = 1, rtmCTL%ntime_wl
+     if ( (rtmCTL%ymd_wl(nt) .eq. ymd) .and. (rtmCTL%tod_wl(nt) .eq. tod) ) then
+        !rtmCTL%wl_inst = rtmCTL%wl(:,nt)
+        do i = 1, rtmCTL%nstation_wl
+           rtmCTL%wl_inst(i) = rtmCTL%wl(nt+(i-1)*rtmCTL%ntime_wl)
+        end do
+        if(masterproc) write(iulog,*) subname, 'nt, ymd_wl, tod_wl, rtmCTL%wl_inst=', nt, rtmCTL%ymd_wl(nt), rtmCTL%tod_wl(nt), rtmCTL%wl_inst
      end if
   end do
   call shr_sys_flush(iulog)

@@ -57,6 +57,7 @@ MODULE MOSART_physics_mod
     implicit none    
     
     integer :: iunit, idam, m, k, unitUp, cnt, ier, dd, nSubStep   !local index
+    integer :: ind                                                 ! Dongyu
     real(r8) :: temp_erout, localDeltaT, temp_haout, temp_Tt, temp_Tr, temp_T, temp_ha
     real(r8) :: negchan
 	integer  :: numSubSteps
@@ -338,10 +339,11 @@ MODULE MOSART_physics_mod
              do iunit=rtmCTL%begr,rtmCTL%endr
                 if ( (rtmCTL%mask(iunit) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit) .eq. 1) ) then
                    !TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%ssh(iunit) + Tunit%vdatum_conversion(iunit) ! assign ocn's water depth to the dstrm component of the specified outlet cell 
-                   !TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%wl_inst 
-                   TRunoff%yr_dstrm(iunit) = TRunoff%yr_dstrm(iunit) + rtmCTL%wl_inst
-                   rtmCTL%ssh(iunit) = rtmCTL%wl_inst
-                   !write (6,*) 'Dongyu TRunoff%yr_dstrm(iunit), rtmCTL%wl_inst= ', TRunoff%yr_dstrm(iunit), rtmCTL%wl_inst
+                   ind = findNearest(rtmCTL%lonc(iunit), rtmCTL%latc(iunit))
+                   !TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%wl_inst(ind)
+                   TRunoff%yr_dstrm(iunit) = TRunoff%yr(iunit,nt_nliq) + rtmCTL%wl_inst(ind)
+                   TRunoff%ssh(iunit) = rtmCTL%wl_inst(ind)
+                   !write (6,*) 'ind, lonc, latc, lon_wl, lat_wl, rtmCTL%wl_inst(ind), rtmCTL%ssh(iunit)=', ind, rtmCTL%lonc(iunit), rtmCTL%latc(iunit), rtmCTL%lon_wl(ind), rtmCTL%lat_wl(ind), rtmCTL%wl_inst(ind), rtmCTL%ssh(iunit)
                    if (TRunoff%yr_dstrm(iunit) .lt. 0) then
                       TRunoff%yr_dstrm(iunit) = 0
                    end if
@@ -1393,6 +1395,32 @@ MODULE MOSART_physics_mod
                      TRunoff%etin(IDlist(5),1)/TUnit%area(IDlist(5)), TRunoff%erlateral(IDlist(5),1)/TUnit%area(IDlist(5)), TRunoff%flow(IDlist(5),1)
   
   end subroutine printTest
+
+!-----------------------------------------------------------------------
+
+  function findNearest(lonc_, latc_) result(ind_)
+  ! Dongyu Function for finding the index with nearest distance
+    implicit none
+    real(r8), intent(in) :: lonc_, latc_    ! cell coordinates
+
+    integer              :: inds(1)         ! index of nearest station
+    integer              :: ind_            ! index of nearest station
+    real(r8),allocatable :: distance(:)
+    integer              :: i               ! loop index
+    character(len=*),parameter :: subname = '(findnearest)'
+
+    allocate(distance(rtmCTL%nstation_wl))
+
+    do i = 1, rtmCTL%nstation_wl
+        distance(i) = sqrt( (lonc_ - rtmCTL%lon_wl(i))**2 + (latc_ - rtmCTL%lat_wl(i))**2 ) 
+    end do
+
+    inds = MINLOC (distance)
+    ind_ = inds(1)
+
+    deallocate(distance)
+ 
+  end function findNearest
 
 !-----------------------------------------------------------------------
 

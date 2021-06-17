@@ -148,11 +148,15 @@ module RunoffMod
      real(r8), pointer :: ssh(:)        ! Dongyu
      real(r8), pointer :: yr_nt1(:)     ! Dongyu
 
-     integer           :: ntime_wl      ! Dongyu NOAA water level data length
-     integer , pointer :: ymd_wl(:)     ! Dongyu NOAA water level year month day
-     integer , pointer :: tod_wl(:)     ! Dongyu NOAA water level time of day
-     real(r8), pointer :: wl(:)         ! Dongyu NOAA water level
-     real(r8)          :: wl_inst       ! Dongyu NOAA instantaneous water level
+     ! Dongyu NOAA water level data
+     integer           :: ntime_wl      ! data length
+     integer           :: nstation_wl   ! station number
+     real(r8), pointer :: lon_wl(:)     ! station longitude
+     real(r8), pointer :: lat_wl(:)     ! station latitude
+     integer , pointer :: ymd_wl(:)     ! year month day
+     integer , pointer :: tod_wl(:)     ! time of day
+     real(r8), pointer :: wl(:)         ! water level
+     real(r8), pointer :: wl_inst(:)    ! instantaneous water level
      
   end type runoff_flow
 
@@ -412,6 +416,8 @@ module RunoffMod
     !real(r8), pointer :: delta_wr(:)   ! Change of channel water volume during channel routing (m^3).
     real(r8), pointer :: wr_rtg(:)      ! Channel water volume after channel routing (m^3).
     real(r8), pointer :: yr_rtg(:)      ! Channel water depth after channel routing (m).
+
+    real(r8), pointer :: ssh(:)      ! Dongyu sea surface height (m).
    
   end type TstatusFlux
   !== Hongyi
@@ -607,6 +613,7 @@ contains
     rtmCTL%qgwl(:,:)       = 0._r8
     rtmCTL%qdto(:,:)       = 0._r8
     rtmCTL%qdem(:,:)       = 0._r8
+    rtmCTL%ssh(:)          = 0._r8  ! Dongyu
     
     if (heatflag) then
       allocate(rtmCTL%Tqsur(begr:endr),                 &
