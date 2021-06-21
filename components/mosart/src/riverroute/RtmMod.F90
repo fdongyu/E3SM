@@ -2438,7 +2438,10 @@ contains
     rtmCTL%yr      = TRunoff%yr
     rtmCTL%rr      = TRunoff%rr
     rtmCTL%erout   = TRunoff%erout
-    rtmCTL%ssh     = TRunoff%ssh  ! Dongyu
+   
+    if (use_dnstrm_boundary) then
+       rtmCTL%ssh     = TRunoff%ssh  ! Dongyu
+    end if 
 
     ! If inundation scheme is turned on :
     if (inundflag .and. Tctl%OPT_inund .eq. 1 ) then
