@@ -194,6 +194,8 @@ module seq_flds_mod
   character(CXX) :: seq_flds_o2x_fluxes
   character(CXX) :: seq_flds_x2o_states
   character(CXX) :: seq_flds_x2o_fluxes
+  character(CXX) :: seq_flds_o2x_states_to_rof    ! Dongyu
+  character(CXX) :: seq_flds_o2x_fluxes_to_rof    ! Dongyu
 
   character(CXX) :: seq_flds_g2x_states
   character(CXX) :: seq_flds_g2x_states_to_lnd
@@ -253,6 +255,7 @@ module seq_flds_mod
   character(CXX) :: seq_flds_x2g_fields
   character(CXX) :: seq_flds_w2x_fields
   character(CXX) :: seq_flds_x2w_fields
+  character(CXX) :: seq_flds_o2x_fields_to_rof       ! Dongyu
 
   !----------------------------------------------------------------------------
   ! component names
@@ -325,6 +328,8 @@ contains
     character(CXX) :: x2l_fluxes_from_glc = ''
     character(CXX) :: o2x_states = ''
     character(CXX) :: o2x_fluxes = ''
+    character(CXX) :: o2x_states_to_rof = ''  ! Dongyu
+    character(CXX) :: o2x_fluxes_to_rof = ''  ! Dongyu
     character(CXX) :: x2o_states = ''
     character(CXX) :: x2o_fluxes = ''
     character(CXX) :: g2x_states = ''
@@ -1620,6 +1625,36 @@ contains
     stdname  = 'sea_surface_eastward_slope'
     units    = 'm m-1'
     attname  = 'So_dhdx'
+    call metadata_set(attname, longname, stdname, units)
+
+    ! Dongyu ssh
+    call seq_flds_add(o2x_states,"So_ssh")
+    call seq_flds_add(x2r_states,"So_ssh")
+    call seq_flds_add(o2x_states_to_rof,"So_ssh")
+    longname = 'Sea surface height'
+    stdname  = 'sea_surface_height'
+    units    = 'm'
+    attname  = 'So_ssh'
+    call metadata_set(attname, longname, stdname, units)
+
+    ! Dongyu salt flux
+    !call seq_flds_add(o2x_fluxes,"Foro_saltFlux")
+    !call seq_flds_add(x2r_fluxes,"Foro_saltFlux")
+    !call seq_flds_add(o2x_fluxes_to_rof,"Foro_saltFlux")
+    !longname = 'Salt flux'
+    !stdname  = 'salt_flux'
+    !units    = 'PSU m s-1'
+    !attname  = 'Foro_saltFlux'
+    !call metadata_set(attname, longname, stdname, units)
+
+    ! Dongyu salinity as state variable 
+    call seq_flds_add(o2x_states,"So_s_ocn2rof")
+    call seq_flds_add(x2r_states,"So_s_ocn2rof")
+    call seq_flds_add(o2x_states_to_rof,"So_s_ocn2rof")
+    longname = 'Salinity concentration mapped to rof'
+    stdname  = 's_ocn2rof'
+    units    = 'PSU m-3'
+    attname  = 'So_s_ocn2rof'
     call metadata_set(attname, longname, stdname, units)
 
     ! Meridional sea surface slope
@@ -3594,6 +3629,9 @@ contains
     seq_flds_r2o_liq_fluxes = trim(r2o_liq_fluxes)
     seq_flds_r2o_ice_fluxes = trim(r2o_ice_fluxes)
 
+    seq_flds_o2x_states_to_rof = trim(o2x_states_to_rof)  ! Dongyu
+    seq_flds_o2x_fluxes_to_rof = trim(o2x_fluxes_to_rof)  ! Dongyu
+
     if (seq_comm_iamroot(ID)) then
        write(logunit,*) subname//': seq_flds_a2x_states= ',trim(seq_flds_a2x_states)
        write(logunit,*) subname//': seq_flds_a2x_fluxes= ',trim(seq_flds_a2x_fluxes)
@@ -3642,6 +3680,8 @@ contains
        write(logunit,*) subname//': seq_flds_w2x_fluxes= ',trim(seq_flds_w2x_fluxes)
        write(logunit,*) subname//': seq_flds_x2w_states= ',trim(seq_flds_x2w_states)
        write(logunit,*) subname//': seq_flds_x2w_fluxes= ',trim(seq_flds_x2w_fluxes)
+       write(logunit,*) subname//': seq_flds_o2x_states_to_rof=',trim(seq_flds_o2x_states_to_rof) ! Dongyu
+       write(logunit,*) subname//': seq_flds_o2x_fluxes_to_rof=',trim(seq_flds_o2x_fluxes_to_rof) ! Dongyu
     end if
 
     call catFields(seq_flds_dom_fields, seq_flds_dom_coord , seq_flds_dom_other )
@@ -3666,6 +3706,8 @@ contains
     call catFields(seq_flds_x2r_fields, seq_flds_x2r_states, seq_flds_x2r_fluxes)
     call catFields(seq_flds_w2x_fields, seq_flds_w2x_states, seq_flds_w2x_fluxes)
     call catFields(seq_flds_x2w_fields, seq_flds_x2w_states, seq_flds_x2w_fluxes)
+    ! Dongyu
+    call catFields(seq_flds_o2x_fields_to_rof, seq_flds_o2x_states_to_rof, seq_flds_o2x_fluxes_to_rof)
 
   end subroutine seq_flds_set
 

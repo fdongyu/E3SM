@@ -2328,6 +2328,26 @@ contains
 
    real (kind=RKIND) :: surfaceFreezingTemp
 
+   real (kind=RKIND), dimension(:), pointer :: ssh ! Dongyu
+   ! Dongyu add salinity
+   integer :: iam, iEdge, k
+   ! mesh variables
+   integer, dimension(:,:), pointer :: boundaryCell
+   integer, dimension(:,:), pointer :: boundaryEdge
+   integer, dimension(:),   pointer :: nEdgesOnCell
+   integer, dimension(:,:), pointer :: edgesOnCell
+   integer, dimension(:),   pointer :: maxLevelCell
+   real(kind=RKIND), dimension(:), pointer   :: dvEdge
+   real(kind=RKIND), dimension(:), pointer ::  areaCell
+   integer, pointer :: nVertLevels
+   ! salinity, normal velocity, salt flux
+   real (kind=RKIND), dimension(:,:,:), pointer :: activeTracers
+   real (kind=RKIND), dimension(:,:), pointer :: normalVelocity
+   real (kind=RKIND), dimension(:), allocatable :: salt_flux
+   real (kind=RKIND), dimension(:), allocatable :: salinity_rof
+   integer, pointer :: indexS
+   real(kind=RKIND) :: sumS, salt_flux_lyr, sumS_rof, salinity_rof_lyr
+
    logical, pointer :: frazilIceActive,          &
                        config_use_ecosysTracers, &
                        config_use_DMSTracers,    &
@@ -2385,6 +2405,54 @@ contains
         call mpas_pool_get_array(statePool, 'accumulatedFrazilIceMass', accumulatedFrazilIceMass, 1)
      end if
 
+     call mpas_pool_get_array(statePool, 'ssh', ssh) ! Dongyu
+     ! Dongyu salinity
+     call mpas_pool_get_array(meshPool, 'boundaryCell', boundaryCell)
+     call mpas_pool_get_array(meshPool, 'boundaryEdge', boundaryEdge)
+     call mpas_pool_get_array(meshPool, 'nEdgesOnCell', nEdgesOnCell)
+     call mpas_pool_get_array(meshPool, 'edgesOnCell', edgesOnCell)
+     call mpas_pool_get_dimension(meshPool, 'nVertLevels', nVertLevels)
+     call mpas_pool_get_array(meshPool, 'maxLevelCell', maxLevelCell)
+     call mpas_pool_get_array(meshPool, 'dvEdge', dvEdge)
+     call mpas_pool_get_array(meshPool, 'areaCell', areaCell)
+
+     call mpas_pool_get_array(tracersPool, 'activeTracers', activeTracers, 1)
+     call mpas_pool_get_array(statePool, 'normalVelocity', normalVelocity, 1)
+     call mpas_pool_get_dimension(tracersPool, 'index_salinity', indexS)
+
+     allocate(salinity_rof(nCellsSolve))
+     salinity_rof = 0.0_RKIND  ! salinity concentration PSU / m3
+     do i = 1, nCellsSolve
+        !! Find boundary cell
+        !if (boundaryCell(1, i) == 1) then
+           sumS_rof = 0.0_RKIND
+           do k = 1,maxLevelCell(i)
+              salinity_rof_lyr = activeTracers(indexS, k, i) / layerThickness(k,i) / areaCell(i)
+              sumS_rof = sumS_rof + salinity_rof_lyr
+           enddo
+           salinity_rof(i) = sumS_rof / maxLevelCell(i)
+        !end if
+     enddo
+
+     allocate(salt_flux(nCellsSolve))
+     salt_flux = 0.0_RKIND
+     do i = 1, nCellsSolve
+        ! Find boundary cell
+        if (boundaryCell(1, i) == 1) then
+           sumS = 0.0_RKIND
+           ! Find boundary edge
+           do iEdge = 1, nEdgesOnCell(i)
+              if ( boundaryEdge(1, edgesOnCell(i, iEdge) )  == 1 ) then
+                 do k = 1,maxLevelCell(i)
+                     salt_flux_lyr = normalVelocity(k, iEdge) * activeTracers(indexS, k, i)
+                     sumS = sumS + salt_flux_lyr !* layerThickness(k,i) * dvEdge(iEdge) ! don't multiply Area 
+                 enddo
+              end if
+           enddo
+           salt_flux(i) = sumS / maxLevelCell(i)
+        end if
+     enddo
+
      ! BGC fields
      if (config_use_ecosysTracers) then
 
@@ -2433,6 +2501,10 @@ contains
        o2x_o % rAttr(index_o2x_So_dhdy, n) = filteredSSHGradientMeridional(i)
 
        o2x_o % rAttr(index_o2x_Faoo_h2otemp, n) = avgTotalFreshWaterTemperatureFlux(i) * rho_sw * cp_sw
+
+       o2x_o % rAttr(index_o2x_So_ssh, n)        = ssh(i)          ! Dongyu
+       o2x_o % rAttr(index_o2x_So_s_ocn2rof, n)  = salinity_rof(i) ! Dongyu salinity as state variable
+       !o2x_o % rAttr(index_o2x_Foro_saltFlux, n) = salt_flux(i)    ! Dongyu
 
        if ( frazilIceActive ) then
           ! negative when frazil ice can be melted
@@ -2536,6 +2608,8 @@ contains
 
      end do
 
+     deallocate(salt_flux)    ! Dongyu
+     deallocate(salinity_rof) ! Dongyu
      block_ptr => block_ptr % next
    end do
 

@@ -247,6 +247,10 @@ def write_seq_maps_file(case, nmlgen, confdir):
                         if "rof2ocn_" in name:
                             if case.get_value("COMP_OCN") == 'docn':
                                 logger.warning("   NOTE: ignoring setting of {}=idmap in seq_maps.rc".format(name))
+                        # Dongyu TODO: needs to set default mapping file
+                        if "ocn2rof_" in name:
+                            if case.get_value("COMP_ROF") == 'docn':
+                                logger.warning("   NOTE: ignoring setting of {}=idmap in seq_maps.rc".format(name))
                         else:
                             expect(gridvalue[component1] == gridvalue[component2],
                                    "Need to provide valid mapping file between {} and {} in xml variable {} ".\
