@@ -905,7 +905,8 @@ MODULE MOSART_physics_mod
        elseif ( use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 .and. TUnit%ocn_rof_coupling_ID(iunit) .eq. 0 ) then
           call Routing_KW(iunit, nt, theDeltaT)
        else
-          if(nt == nt_nliq) then
+!          TODO: conc_r
+!          if(nt == nt_nliq) then
               if(TRunoff%rslp_energy(iunit) >= TINYVALUE) then ! flow is from current channel to downstream
                 TRunoff%vr(iunit,nt) = CRVRMAN(TRunoff%rslp_energy(iunit), TUnit%nr(iunit), TRunoff%rr(iunit,nt))
                 TRunoff%erout(iunit,nt) = -TRunoff%vr(iunit,nt) * TRunoff%mr(iunit,nt)
@@ -949,22 +950,22 @@ MODULE MOSART_physics_mod
                 TRunoff%vr(iunit,nt) = 0._r8
                 TRunoff%erout(iunit,nt) = 0._r8
               end if   
-          else
-            if(TRunoff%erout(iunit,nt_nliq) <= -TINYVALUE) then ! flow is from current channel to downstream
-              TRunoff%erout(iunit,nt) = TRunoff%conc_r(iunit,nt) * TRunoff%erout(iunit,nt_nliq)
-              if(TRunoff%erin(iunit,nt)*theDeltaT + TRunoff%wr(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream, 
-                 TRunoff%erout(iunit,nt) = 0._r8
-              elseif(TRunoff%erout(iunit,nt) <= -TINYVALUE .and. TRunoff%wr(iunit,nt) + &
-                 (TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt)) * theDeltaT < TINYVALUE) then
-                 TRunoff%erout(iunit,nt) = -(TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%wr(iunit,nt)*0.95_r8 / theDeltaT)
-              end if
+!          else
+!            if(TRunoff%erout(iunit,nt_nliq) <= -TINYVALUE) then ! flow is from current channel to downstream
+!              TRunoff%erout(iunit,nt) = TRunoff%conc_r(iunit,nt) * TRunoff%erout(iunit,nt_nliq)
+!              if(TRunoff%erin(iunit,nt)*theDeltaT + TRunoff%wr(iunit,nt) <= TINYVALUE) then! much negative inflow from upstream, 
+!                 TRunoff%erout(iunit,nt) = 0._r8
+!              elseif(TRunoff%erout(iunit,nt) <= -TINYVALUE .and. TRunoff%wr(iunit,nt) + &
+!                 (TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%erout(iunit,nt)) * theDeltaT < TINYVALUE) then
+!                 TRunoff%erout(iunit,nt) = -(TRunoff%erlateral(iunit,nt) + TRunoff%erin(iunit,nt) + TRunoff%wr(iunit,nt)*0.95_r8 / theDeltaT)
+!              end if
 
-            elseif(TRunoff%erout(iunit,nt_nliq) >= TINYVALUE) then ! flow is from downstream to current channel
-              TRunoff%erout(iunit,nt) = 0._r8
-            else
-              TRunoff%erout(iunit,nt) = 0._r8
-            end if
-          end if
+!            elseif(TRunoff%erout(iunit,nt_nliq) >= TINYVALUE) then ! flow is from downstream to current channel
+!              TRunoff%erout(iunit,nt) = 0._r8
+!            else
+!              TRunoff%erout(iunit,nt) = 0._r8
+!            end if
+!          end if
        end if
     end if
 
