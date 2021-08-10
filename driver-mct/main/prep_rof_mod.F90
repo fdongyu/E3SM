@@ -254,6 +254,8 @@ contains
                string='mapper_Fa2r initialization', esmf_map=esmf_map_flag)
 
           if (iamroot_CPLID) then
+             write(logunit,*) ' '
+             write(logunit,F00) 'Initializing mapper_Sa2r'
           end if
           call seq_map_init_rcfile(mapper_Sa2r, atm(1), rof(1), &
                'seq_maps.rc','atm2rof_smapname:','atm2rof_smaptype:',samegrid_ar, &
