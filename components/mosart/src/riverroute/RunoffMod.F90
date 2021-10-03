@@ -158,6 +158,20 @@ module RunoffMod
      real(r8), pointer :: templand_Tqsub_nt2(:)
      real(r8), pointer :: templand_Ttrib_nt2(:)
      real(r8), pointer :: templand_Tchanr_nt2(:)
+
+     real(r8), pointer :: ssh(:)        ! Dongyu
+     real(r8), pointer :: yr(:,:)       ! Dongyu water depth
+     real(r8), pointer :: yr_nt1(:)     ! Dongyu
+
+     ! Dongyu NOAA water level data
+     integer           :: ntime_wl      ! data length
+     integer           :: nstation_wl   ! station number
+     real(r8), pointer :: lon_wl(:)     ! station longitude
+     real(r8), pointer :: lat_wl(:)     ! station latitude
+     integer , pointer :: ymd_wl(:)     ! year month day
+     integer , pointer :: tod_wl(:)     ! time of day
+     real(r8), pointer :: wl(:)         ! water level
+     real(r8), pointer :: wl_inst(:)    ! instantaneous water level
      
   end type runoff_flow
 
@@ -245,6 +259,8 @@ module RunoffMod
      real(r8), pointer :: Gxr(:)       ! drainage density within the cell, [1/m]
      real(r8), pointer :: frac(:)      ! fraction of cell included in the study area, [-]
      logical , pointer :: euler_calc(:)! flag for calculating tracers in euler
+     integer , pointer :: ocn_rof_coupling_ID(:)  ! Dongyu ocn rof 2-way coupling ID, 0=off, 1=on
+     real(r8), pointer :: vdatum_conversion(:)    ! Dongyu ocn rof 2-way coupling vertical datum conversion
 
      ! hillslope properties
      real(r8), pointer :: nh(:)        ! manning's roughness of the hillslope (channel network excluded) 
@@ -435,6 +451,8 @@ module RunoffMod
     !real(r8), pointer :: delta_wr(:)   ! Change of channel water volume during channel routing (m^3).
     real(r8), pointer :: wr_rtg(:)      ! Channel water volume after channel routing (m^3).
     real(r8), pointer :: yr_rtg(:)      ! Channel water depth after channel routing (m).
+
+    real(r8), pointer :: ssh(:)      ! Dongyu sea surface height (m).
    
   end type TstatusFlux
   !== Hongyi
@@ -601,6 +619,9 @@ contains
              rtmCTL%qgwl(begr:endr,nt_rtm),       &
              rtmCTL%qdto(begr:endr,nt_rtm),       &
              rtmCTL%qdem(begr:endr,nt_rtm),       & 
+             rtmCTL%yr(begr:endr,nt_rtm),         & ! Dongyu water depth
+             rtmCTL%yr_nt1(begr:endr),            & ! Dongyu
+             rtmCTL%ssh(begr:endr),               & ! Dongyu
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
@@ -631,6 +652,7 @@ contains
     rtmCTL%qgwl(:,:)       = 0._r8
     rtmCTL%qdto(:,:)       = 0._r8
     rtmCTL%qdem(:,:)       = 0._r8
+    rtmCTL%ssh(:)          = 0._r8  ! Dongyu
     
     if (heatflag) then
       allocate(rtmCTL%Tqsur(begr:endr),                 &
