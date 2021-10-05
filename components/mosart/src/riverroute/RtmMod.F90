@@ -2513,6 +2513,7 @@ contains
     rtmCTL%wt      = TRunoff%wt
     rtmCTL%wr      = TRunoff%wr
     rtmCTL%erout   = TRunoff%erout
+    rtmCTL%yr      = TRunoff%yr     ! Dongyu update water depth
 
     if (use_dnstrm_boundary) then
        rtmCTL%ssh     = TRunoff%ssh  ! Dongyu
