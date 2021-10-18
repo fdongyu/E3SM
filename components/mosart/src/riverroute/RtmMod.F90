@@ -38,7 +38,7 @@ module RtmMod
                                SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm, &
                                SMatP_upstrm, avsrc_upstrm, avdst_upstrm, &
                                SMatP_direct, avsrc_direct, avdst_direct
-  use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice, nt_nmud, nt_nsan
+  use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice, nt_nmud, nt_nsan, nt_nsal !Dongyu
   use MOSART_physics_mod, only : Euler
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel
@@ -1739,6 +1739,12 @@ contains
       rtmCTL%wt(:, 2) = 0._r8
       rtmCTL%wr(:, 2) = 0._r8
       rtmCTL%erout(:, 2) = 0._r8
+
+      ! Dongyu for tracer salinity
+      rtmCTL%wh(:, nt_nsal) = 0._r8
+      rtmCTL%wt(:, nt_nsal) = 0._r8
+      rtmCTL%wr(:, nt_nsal) = 0._r8
+      rtmCTL%erout(:, nt_nsal) = 0._r8
 
       TRunoff%wh   = rtmCTL%wh
       TRunoff%wt   = rtmCTL%wt
@@ -4746,7 +4752,7 @@ contains
      call shr_sys_flush(iulog)
   endif
 
-  ! read NOAA water level data: lon, lat, ymd, tod, waterlevel
+  ! read dnstrm water level and salinity data: lon, lat, ymd, tod, waterlevel, salinity
   allocate(rtmCTL%lon_wl(rtmCTL%nstation_wl))
   call ncd_io(ncid=ncid, varname='lon', flag='read', data=rtmCTL%lon_wl, readvar=found)
   if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read data lon')
@@ -4777,9 +4783,17 @@ contains
   if (masterproc) write(iulog,FORMR) trim(subname),' read data waterlevel',minval(rtmCTL%wl),maxval(rtmCTL%wl)
   call shr_sys_flush(iulog)
 
+  allocate(rtmCTL%salinity(ndata))
+  call ncd_io(ncid=ncid, varname='salinity', flag='read', data=rtmCTL%salinity, readvar=found)
+  if ( .not. found ) call shr_sys_abort( trim(subname)//' ERROR: read data salinity')
+  if (masterproc) write(iulog,FORMR) trim(subname),' read data salinity',minval(rtmCTL%salinity),maxval(rtmCTL%salinity)
+  call shr_sys_flush(iulog)
+
+
   call ncd_pio_closefile(ncid)
 
   allocate (rtmCTL%wl_inst(rtmCTL%nstation_wl))
+  allocate (rtmCTL%salinity_inst(rtmCTL%nstation_wl))
 
   end subroutine dnstrm_boundary_init 
 
@@ -4799,8 +4813,12 @@ contains
         !rtmCTL%wl_inst = rtmCTL%wl(:,nt)
         do i = 1, rtmCTL%nstation_wl
            rtmCTL%wl_inst(i) = rtmCTL%wl(nt+(i-1)*rtmCTL%ntime_wl)
+           rtmCTL%salinity_inst(i) = rtmCTL%salinity(nt+(i-1)*rtmCTL%ntime_wl)
         end do
-        if(masterproc) write(iulog,*) subname, 'nt, ymd_wl, tod_wl, rtmCTL%wl_inst=', nt, rtmCTL%ymd_wl(nt), rtmCTL%tod_wl(nt), rtmCTL%wl_inst
+        if(masterproc) then 
+          write(iulog,*) subname, 'nt, ymd_wl, tod_wl, rtmCTL%wl_inst=', nt, rtmCTL%ymd_wl(nt), rtmCTL%tod_wl(nt), rtmCTL%wl_inst
+          write(iulog,*) subname, 'rtmCTL%salinity_inst=', rtmCTL%salinity_inst
+        end if
      end if
   end do
   call shr_sys_flush(iulog)

@@ -162,8 +162,10 @@ module RunoffMod
      real(r8), pointer :: ssh(:)        ! Dongyu
      real(r8), pointer :: yr(:,:)       ! Dongyu water depth
      real(r8), pointer :: yr_nt1(:)     ! Dongyu
+     real(r8), pointer :: volr_nt5(:)      ! Dongyu salinity 
+     real(r8), pointer :: runofflnd_nt5(:) ! Dongyu salinity
 
-     ! Dongyu NOAA water level data
+     ! Dongyu dnstrm water level data
      integer           :: ntime_wl      ! data length
      integer           :: nstation_wl   ! station number
      real(r8), pointer :: lon_wl(:)     ! station longitude
@@ -172,6 +174,8 @@ module RunoffMod
      integer , pointer :: tod_wl(:)     ! time of day
      real(r8), pointer :: wl(:)         ! water level
      real(r8), pointer :: wl_inst(:)    ! instantaneous water level
+     real(r8), pointer :: salinity(:)         ! salinity
+     real(r8), pointer :: salinity_inst(:)    ! instantaneous salinity
      
   end type runoff_flow
 
@@ -622,6 +626,8 @@ contains
              rtmCTL%yr(begr:endr,nt_rtm),         & ! Dongyu water depth
              rtmCTL%yr_nt1(begr:endr),            & ! Dongyu
              rtmCTL%ssh(begr:endr),               & ! Dongyu
+             rtmCTL%runofflnd_nt5(begr:endr),     & ! salinity
+             rtmCTL%volr_nt5(begr:endr),          & ! salinity
              stat=ier)
     if (ier /= 0) then
        write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
