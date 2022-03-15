@@ -195,6 +195,8 @@ module seq_flds_mod
   character(CXX) :: seq_flds_o2x_fluxes
   character(CXX) :: seq_flds_x2o_states
   character(CXX) :: seq_flds_x2o_fluxes
+  character(CXX) :: seq_flds_o2x_states_to_rof    ! Dongyu
+  character(CXX) :: seq_flds_o2x_fluxes_to_rof    ! Dongyu
 
   character(CXX) :: seq_flds_g2x_states
   character(CXX) :: seq_flds_g2x_states_to_lnd
@@ -254,6 +256,7 @@ module seq_flds_mod
   character(CXX) :: seq_flds_x2g_fields
   character(CXX) :: seq_flds_w2x_fields
   character(CXX) :: seq_flds_x2w_fields
+  character(CXX) :: seq_flds_o2x_fields_to_rof       ! Dongyu
 
   !----------------------------------------------------------------------------
   ! component names
@@ -326,6 +329,8 @@ contains
     character(CXX) :: x2l_fluxes_from_glc = ''
     character(CXX) :: o2x_states = ''
     character(CXX) :: o2x_fluxes = ''
+    character(CXX) :: o2x_states_to_rof = ''  ! Dongyu
+    character(CXX) :: o2x_fluxes_to_rof = ''  ! Dongyu
     character(CXX) :: x2o_states = ''
     character(CXX) :: x2o_fluxes = ''
     character(CXX) :: g2x_states = ''
@@ -1631,6 +1636,16 @@ contains
     stdname  = 'sea_surface_eastward_slope'
     units    = 'm m-1'
     attname  = 'So_dhdx'
+    call metadata_set(attname, longname, stdname, units)
+
+    ! Dongyu ssh
+    call seq_flds_add(o2x_states,"So_ssh")
+    call seq_flds_add(x2r_states,"So_ssh")
+    call seq_flds_add(o2x_states_to_rof,"So_ssh")
+    longname = 'Sea surface height'
+    stdname  = 'sea_surface_height'
+    units    = 'm'
+    attname  = 'So_ssh'
     call metadata_set(attname, longname, stdname, units)
 
     ! Meridional sea surface slope
@@ -3704,6 +3719,9 @@ contains
     seq_flds_r2o_liq_fluxes = trim(r2o_liq_fluxes)
     seq_flds_r2o_ice_fluxes = trim(r2o_ice_fluxes)
 
+    seq_flds_o2x_states_to_rof = trim(o2x_states_to_rof)  ! Dongyu
+    seq_flds_o2x_fluxes_to_rof = trim(o2x_fluxes_to_rof)  ! Dongyu
+
     if (seq_comm_iamroot(ID)) then
        write(logunit,*) subname//': seq_flds_a2x_states= ',trim(seq_flds_a2x_states)
        write(logunit,*) subname//': seq_flds_a2x_fluxes= ',trim(seq_flds_a2x_fluxes)
@@ -3752,6 +3770,8 @@ contains
        write(logunit,*) subname//': seq_flds_w2x_fluxes= ',trim(seq_flds_w2x_fluxes)
        write(logunit,*) subname//': seq_flds_x2w_states= ',trim(seq_flds_x2w_states)
        write(logunit,*) subname//': seq_flds_x2w_fluxes= ',trim(seq_flds_x2w_fluxes)
+       write(logunit,*) subname//': seq_flds_o2x_states_to_rof=',trim(seq_flds_o2x_states_to_rof) ! Dongyu
+       write(logunit,*) subname//': seq_flds_o2x_fluxes_to_rof=',trim(seq_flds_o2x_fluxes_to_rof) ! Dongyu 
     end if
 
     call catFields(seq_flds_dom_fields, seq_flds_dom_coord , seq_flds_dom_other )
@@ -3776,6 +3796,7 @@ contains
     call catFields(seq_flds_x2r_fields, seq_flds_x2r_states, seq_flds_x2r_fluxes)
     call catFields(seq_flds_w2x_fields, seq_flds_w2x_states, seq_flds_w2x_fluxes)
     call catFields(seq_flds_x2w_fields, seq_flds_x2w_states, seq_flds_x2w_fluxes)
+    call catFields(seq_flds_o2x_fields_to_rof, seq_flds_o2x_states_to_rof, seq_flds_o2x_fluxes_to_rof) ! Dongyu
 
   end subroutine seq_flds_set
 

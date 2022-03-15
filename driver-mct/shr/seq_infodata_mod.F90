@@ -190,6 +190,7 @@ MODULE seq_infodata_mod
      logical                 :: rof_present     ! does rof component exist
      logical                 :: rofice_present  ! does rof have iceberg coupling on
      logical                 :: rof_prognostic  ! does rof component need input data
+     logical                 :: rofocn_prognostic ! Dongyu does component need ocn data
      logical                 :: flood_present   ! does rof have flooding on
      logical                 :: ocn_present     ! does component model exist
      logical                 :: ocn_prognostic  ! does component model need input data from driver
@@ -743,6 +744,7 @@ CONTAINS
        infodata%atm_prognostic = .false.
        infodata%lnd_prognostic = .false.
        infodata%rof_prognostic = .false.
+       infodata%rofocn_prognostic = .false.  ! Dongyu
        infodata%ocn_prognostic = .false.
        infodata%ocnrof_prognostic = .false.
        infodata%ocn_c2_glcshelf = .false.
@@ -974,7 +976,7 @@ CONTAINS
   !     Get values out of the infodata object.
   !
   ! !INTERFACE: ------------------------------------------------------------------
-
+  ! Dongyu
   SUBROUTINE seq_infodata_GetData_explicit( infodata, cime_model, case_name, case_desc, timing_dir,  &
        model_version, username, hostname, rest_case_name, tchkpt_dir,     &
        start_type, restart_pfile, restart_file, perpetual, perpetual_ymd, &
@@ -984,7 +986,7 @@ CONTAINS
        scm_multcols, scm_nx, scm_ny,                                      &
        atm_present, atm_prognostic,                                       &
        lnd_present, lnd_prognostic,                                       &
-       rof_present, rof_prognostic,                                       &
+       rof_present, rof_prognostic, rofocn_prognostic,                    &
        ocn_present, ocn_prognostic, ocnrof_prognostic, ocn_c2_glcshelf,   &
        ice_present, ice_prognostic,                                       &
        glc_present, glc_prognostic,                                       &
@@ -1151,6 +1153,7 @@ CONTAINS
     logical,                optional, intent(OUT) :: rof_present
     logical,                optional, intent(OUT) :: rofice_present
     logical,                optional, intent(OUT) :: rof_prognostic
+    logical,                optional, intent(OUT) :: rofocn_prognostic       ! Dongyu
     logical,                optional, intent(OUT) :: flood_present
     logical,                optional, intent(OUT) :: ocn_present
     logical,                optional, intent(OUT) :: ocn_prognostic
@@ -1333,6 +1336,7 @@ CONTAINS
     if ( present(rof_present)    ) rof_present    = infodata%rof_present
     if ( present(rofice_present) ) rofice_present = infodata%rofice_present
     if ( present(rof_prognostic) ) rof_prognostic = infodata%rof_prognostic
+    if ( present(rofocn_prognostic) ) rofocn_prognostic = infodata%rofocn_prognostic  ! Dongyu
     if ( present(flood_present)  ) flood_present  = infodata%flood_present
     if ( present(ocn_present)    ) ocn_present    = infodata%ocn_present
     if ( present(ocn_prognostic) ) ocn_prognostic = infodata%ocn_prognostic
@@ -1520,7 +1524,7 @@ CONTAINS
   !     Put values into the infodata object.
   !
   ! !INTERFACE: ------------------------------------------------------------------
-
+  ! Dongyu
   SUBROUTINE seq_infodata_PutData_explicit( infodata, cime_model, case_name, case_desc, timing_dir,  &
        model_version, username, hostname, rest_case_name, tchkpt_dir,     &
        start_type, restart_pfile, restart_file, perpetual, perpetual_ymd, &
@@ -1529,7 +1533,7 @@ CONTAINS
        scm_multcols, scm_nx, scm_ny,                                      &
        atm_present, atm_prognostic,                                       &
        lnd_present, lnd_prognostic,                                       &
-       rof_present, rof_prognostic,                                       &
+       rof_present, rof_prognostic, rofocn_prognostic,                    &
        ocn_present, ocn_prognostic, ocnrof_prognostic, ocn_c2_glcshelf,   &
        ice_present, ice_prognostic,                                       &
        glc_present, glc_prognostic,                                       &
@@ -1695,6 +1699,7 @@ CONTAINS
     logical,                optional, intent(IN)    :: rof_present
     logical,                optional, intent(IN)    :: rofice_present
     logical,                optional, intent(IN)    :: rof_prognostic
+    logical,                optional, intent(IN)    :: rofocn_prognostic  ! Dongyu
     logical,                optional, intent(IN)    :: flood_present
     logical,                optional, intent(IN)    :: ocn_present
     logical,                optional, intent(IN)    :: ocn_prognostic
@@ -1876,6 +1881,7 @@ CONTAINS
     if ( present(rof_present)    ) infodata%rof_present    = rof_present
     if ( present(rofice_present) ) infodata%rofice_present = rofice_present
     if ( present(rof_prognostic) ) infodata%rof_prognostic = rof_prognostic
+    if ( present(rofocn_prognostic) ) infodata%rofocn_prognostic = rofocn_prognostic  ! Dongyu
     if ( present(flood_present)  ) infodata%flood_present  = flood_present
     if ( present(ocn_present)    ) infodata%ocn_present    = ocn_present
     if ( present(ocn_prognostic) ) infodata%ocn_prognostic = ocn_prognostic
@@ -2180,6 +2186,7 @@ CONTAINS
     call shr_mpi_bcast(infodata%rof_present,             mpicom)
     call shr_mpi_bcast(infodata%rofice_present,          mpicom)
     call shr_mpi_bcast(infodata%rof_prognostic,          mpicom)
+    call shr_mpi_bcast(infodata%rofocn_prognostic,       mpicom)  ! Dongyu
     call shr_mpi_bcast(infodata%flood_present,           mpicom)
     call shr_mpi_bcast(infodata%ocn_present,             mpicom)
     call shr_mpi_bcast(infodata%ocn_prognostic,          mpicom)
@@ -2456,6 +2463,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%rof_present,        mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%rofice_present,     mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%rof_prognostic,     mpicom, pebcast=cmppe)
+       call shr_mpi_bcast(infodata%rofocn_prognostic,  mpicom, pebcast=cmppe)  ! Dongyu
        call shr_mpi_bcast(infodata%rof_nx,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%rof_ny,             mpicom, pebcast=cmppe)
        call shr_mpi_bcast(infodata%flood_present,      mpicom, pebcast=cmppe)
@@ -2540,6 +2548,7 @@ CONTAINS
        call shr_mpi_bcast(infodata%rof_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%rofice_present,     mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%rof_prognostic,     mpicom, pebcast=cplpe)
+       call shr_mpi_bcast(infodata%rofocn_prognostic,  mpicom, pebcast=cplpe) ! Dongyu
        call shr_mpi_bcast(infodata%flood_present,      mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ocn_present,        mpicom, pebcast=cplpe)
        call shr_mpi_bcast(infodata%ocn_prognostic,     mpicom, pebcast=cplpe)
@@ -2886,6 +2895,7 @@ CONTAINS
     write(logunit,F0L) subname,'rof_present              = ', infodata%rof_present
     write(logunit,F0L) subname,'rofice_present           = ', infodata%rofice_present
     write(logunit,F0L) subname,'rof_prognostic           = ', infodata%rof_prognostic
+    write(logunit,F0L) subname,'rofocn_prognostic        = ', infodata%rofocn_prognostic ! Dongyu
     write(logunit,F0L) subname,'flood_present            = ', infodata%flood_present
     write(logunit,F0L) subname,'ocn_present              = ', infodata%ocn_present
     write(logunit,F0L) subname,'ocn_prognostic           = ', infodata%ocn_prognostic

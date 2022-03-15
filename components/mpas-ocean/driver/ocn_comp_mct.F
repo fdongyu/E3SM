@@ -2507,6 +2507,8 @@ contains
 
    real (kind=RKIND) :: surfaceFreezingTemp
 
+   real (kind=RKIND), dimension(:), pointer :: ssh ! Dongyu
+
    logical, pointer :: frazilIceActive,          &
                        config_use_ecosysTracers, &
                        config_use_DMSTracers,    &
@@ -2564,6 +2566,8 @@ contains
         call mpas_pool_get_array(statePool, 'accumulatedFrazilIceMass', accumulatedFrazilIceMass, 1)
      end if
 
+     call mpas_pool_get_array(statePool, 'ssh', ssh) ! Dongyu
+
      ! BGC fields
      if (config_use_ecosysTracers) then
 
@@ -2613,6 +2617,8 @@ contains
        o2x_o % rAttr(index_o2x_So_dhdy, n) = filteredSSHGradientMeridional(i)
 
        o2x_o % rAttr(index_o2x_Faoo_h2otemp, n) = avgTotalFreshWaterTemperatureFlux(i) * rho_sw * cp_sw
+
+       o2x_o % rAttr(index_o2x_So_ssh, n)       = ssh(i)          ! Dongyu
 
        if ( frazilIceActive ) then
           ! negative when frazil ice can be melted
