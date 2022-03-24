@@ -340,10 +340,12 @@ MODULE MOSART_physics_mod
                 if ( (rtmCTL%mask(iunit) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit) .eq. 1) ) then
                    !TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%ssh(iunit) + Tunit%vdatum_conversion(iunit) ! assign ocn's water depth to the dstrm component of the specified outlet cell 
                    ind = findNearest(rtmCTL%lonc(iunit), rtmCTL%latc(iunit))
-                   !TRunoff%yr_dstrm(iunit) = TUnit%rdepth(iunit) + rtmCTL%wl_inst(ind)
-                   TRunoff%yr_dstrm(iunit) = TRunoff%yr(iunit,nt_nliq) + rtmCTL%wl_inst(ind)
+                   !TRunoff%yr_dstrm(iunit) = Tunit%vdatum_conversion(iunit) + rtmCTL%wl_inst(ind)
+                   !TRunoff%yr_dstrm(iunit) = TRunoff%yr(iunit,nt_nliq) + rtmCTL%wl_inst(ind)
+                   TRunoff%yr_dstrm(iunit) = rtmCTL%wl_inst(ind)
                    TRunoff%ssh(iunit) = rtmCTL%wl_inst(ind)
                    !write (6,*) 'ind, lonc, latc, lon_wl, lat_wl, rtmCTL%wl_inst(ind), rtmCTL%ssh(iunit)=', ind, rtmCTL%lonc(iunit), rtmCTL%latc(iunit), rtmCTL%lon_wl(ind), rtmCTL%lat_wl(ind), rtmCTL%wl_inst(ind), rtmCTL%ssh(iunit)
+                   !write (6,*) 'rtmCTL%wl_inst(ind), TRunoff%yr(iunit,nt_nliq), TRunoff%yr_dstrm(iunit)', rtmCTL%wl_inst(ind), TRunoff%yr(iunit,nt_nliq), TRunoff%yr_dstrm(iunit)
                    if (TRunoff%yr_dstrm(iunit) .lt. 0) then
                       TRunoff%yr_dstrm(iunit) = 0
                    end if

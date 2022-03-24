@@ -1259,7 +1259,12 @@ contains
           call shr_sys_abort(subname//' ERROR gdc2glo values')
        endif
        rtmCTL%lonc(nr) = rtmCTL%rlon(i)
-       rtmCTL%latc(nr) = rtmCTL%rlat(j)
+       !rtmCTL%latc(nr) = rtmCTL%rlat(j)
+       if (isgrid2d) then 
+          rtmCTL%latc(nr) = rtmCTL%rlat(j)
+       else 
+          rtmCTL%latc(nr) = rtmCTL%rlat(i)
+       endif
 
        rtmCTL%outletg(nr) = idxocn(n)
        rtmCTL%area(nr) = area_global(n)
@@ -3462,11 +3467,11 @@ contains
         if (masterproc) write(iulog,FORMR) trim(subname),' read ocn_rof_coupling_ID',minval(Tunit%ocn_rof_coupling_ID),maxval(Tunit%ocn_rof_coupling_ID)
         call shr_sys_flush(iulog)
 
-        !allocate(TUnit%vdatum_conversion(begr:endr))
-        !ier = pio_inq_varid(ncid, name='vdatum_conversion', vardesc=vardesc)
-        !call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%vdatum_conversion, ier)
-        !if (masterproc) write(iulog,FORMR) trim(subname),' read vdatum_conversion',minval(Tunit%vdatum_conversion),maxval(Tunit%vdatum_conversion)
-        !call shr_sys_flush(iulog)
+        allocate(TUnit%vdatum_conversion(begr:endr))
+        ier = pio_inq_varid(ncid, name='vdatum_conversion', vardesc=vardesc)
+        call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%vdatum_conversion, ier)
+        if (masterproc) write(iulog,FORMR) trim(subname),' read vdatum_conversion',minval(Tunit%vdatum_conversion),maxval(Tunit%vdatum_conversion)
+        call shr_sys_flush(iulog)
      end if
 
 
