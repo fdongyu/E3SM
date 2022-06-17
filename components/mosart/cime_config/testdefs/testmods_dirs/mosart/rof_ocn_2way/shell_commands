@@ -1,0 +1,2 @@
+./xmlchange OCN2ROF_FMAPNAME="/qfs/people/feng779/DATA/E3SM_coupling/map_EC30to60E2r2_to_r05_nn_masked.210324.nc"
+./xmlchange OCN2ROF_SMAPNAME="/qfs/people/feng779/DATA/E3SM_coupling/map_EC30to60E2r2_to_r05_nn_masked.210324.nc"
