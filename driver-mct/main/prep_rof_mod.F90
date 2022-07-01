@@ -44,6 +44,8 @@ module prep_rof_mod
 
   public :: prep_rof_get_l2racc_lx
   public :: prep_rof_get_l2racc_lx_cnt
+  public :: prep_rof_get_o2racc_ox      ! Dongyu
+  public :: prep_rof_get_o2racc_ox_cnt  ! Dongyu
   public :: prep_rof_get_mapper_Fl2r
   public :: prep_rof_get_a2racc_ax
   public :: prep_rof_get_a2racc_ax_cnt
@@ -898,6 +900,17 @@ contains
     integer, pointer :: prep_rof_get_l2racc_lx_cnt
     prep_rof_get_l2racc_lx_cnt => l2racc_lx_cnt
   end function prep_rof_get_l2racc_lx_cnt
+
+  ! Dongyu test
+  function prep_rof_get_o2racc_ox()
+    type(mct_aVect), pointer :: prep_rof_get_o2racc_ox(:)
+    prep_rof_get_o2racc_ox => o2racc_ox(:)
+  end function prep_rof_get_o2racc_ox
+
+  function prep_rof_get_o2racc_ox_cnt()
+    integer, pointer :: prep_rof_get_o2racc_ox_cnt
+    prep_rof_get_o2racc_ox_cnt => o2racc_ox_cnt
+  end function prep_rof_get_o2racc_ox_cnt
 
   function prep_rof_get_mapper_Fl2r()
     type(seq_map), pointer :: prep_rof_get_mapper_Fl2r

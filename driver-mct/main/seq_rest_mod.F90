@@ -60,6 +60,8 @@ module seq_rest_mod
 #endif
   use prep_rof_mod,    only: prep_rof_get_l2racc_lx
   use prep_rof_mod,    only: prep_rof_get_l2racc_lx_cnt
+  use prep_rof_mod,    only: prep_rof_get_o2racc_ox      ! Dongyu
+  use prep_rof_mod,    only: prep_rof_get_o2racc_ox_cnt  ! Dongyu
   use prep_glc_mod,    only: prep_glc_get_l2gacc_lx
   use prep_glc_mod,    only: prep_glc_get_l2gacc_lx_cnt
   use prep_glc_mod,    only: prep_glc_get_x2gacc_gx
@@ -115,6 +117,7 @@ module seq_rest_mod
   logical     :: ice_prognostic         ! .true.  => ice comp expects input
   logical     :: ocn_prognostic         ! .true.  => ocn comp expects input
   logical     :: ocnrof_prognostic      ! .true.  => ocn comp expects runoff input
+  logical     :: rofocn_prognostic      ! Dongyu .true.  => rof comp expects ssh input
   logical     :: glc_prognostic         ! .true.  => glc comp expects input
   logical     :: wav_prognostic         ! .true.  => wav comp expects input
   logical     :: esp_prognostic         ! .true.  => esp comp expects input
@@ -128,6 +131,8 @@ module seq_rest_mod
   integer        , pointer :: x2oacc_ox_cnt
   type(mct_aVect), pointer :: l2racc_lx(:)
   integer        , pointer :: l2racc_lx_cnt
+  type(mct_aVect), pointer :: o2racc_ox(:)  ! Dongyu
+  integer        , pointer :: o2racc_ox_cnt ! Dongyu
   type(mct_aVect), pointer :: l2gacc_lx(:)
   integer        , pointer :: l2gacc_lx_cnt
   type(mct_aVect), pointer :: x2gacc_gx(:)
@@ -202,6 +207,7 @@ contains
          ocn_prognostic=ocn_prognostic,      &
          rof_prognostic=rof_prognostic,      &
          ocnrof_prognostic=ocnrof_prognostic,    &
+         rofocn_prognostic=rofocn_prognostic,    &  ! Dongyu
          glc_prognostic=glc_prognostic,      &
          wav_prognostic=wav_prognostic,      &
          iac_prognostic=iac_prognostic,      &
@@ -227,6 +233,14 @@ contains
           l2racc_lx_cnt => prep_rof_get_l2racc_lx_cnt()
           call seq_io_read(rest_file, gsmap, l2racc_lx, 'l2racc_lx')
           call seq_io_read(rest_file, l2racc_lx_cnt ,'l2racc_lx_cnt')
+       end if
+       ! Dongyu
+       if (ocn_present .and. rofocn_prognostic) then
+          gsmap         => component_get_gsmap_cx(ocn(1))
+          o2racc_ox     => prep_rof_get_o2racc_ox()
+          o2racc_ox_cnt => prep_rof_get_o2racc_ox_cnt()
+          call seq_io_read(rest_file, gsmap, o2racc_ox, 'o2racc_ox')
+          call seq_io_read(rest_file, o2racc_ox_cnt ,'o2racc_ox_cnt')
        end if
        if (lnd_present .and. glc_prognostic) then
           gsmap         => component_get_gsmap_cx(lnd(1))
@@ -394,6 +408,7 @@ contains
          rof_prognostic=rof_prognostic,      &
          ocn_prognostic=ocn_prognostic,      &
          ocnrof_prognostic=ocnrof_prognostic,    &
+         rofocn_prognostic=rofocn_prognostic,    &  ! Dongyu
          glc_prognostic=glc_prognostic,      &
          wav_prognostic=wav_prognostic,      &
          esp_prognostic=esp_prognostic,      &
@@ -503,6 +518,16 @@ contains
              call seq_io_write(rest_file, gsmap, l2racc_lx, 'l2racc_lx', &
                   whead=whead, wdata=wdata)
              call seq_io_write(rest_file, l2racc_lx_cnt, 'l2racc_lx_cnt', &
+                  whead=whead, wdata=wdata)
+          end if
+          ! Dongyu test
+          if (ocn_present .and. rofocn_prognostic) then
+             gsmap         => component_get_gsmap_cx(ocn(1))
+             o2racc_ox     => prep_rof_get_o2racc_ox()
+             o2racc_ox_cnt =>  prep_rof_get_o2racc_ox_cnt()
+             call seq_io_write(rest_file, gsmap, o2racc_ox, 'o2racc_ox', &
+                  whead=whead, wdata=wdata)
+             call seq_io_write(rest_file, o2racc_ox_cnt, 'o2racc_ox_cnt', &
                   whead=whead, wdata=wdata)
           end if
           if (lnd_present .and. glc_prognostic) then
