@@ -519,6 +519,16 @@
       <mask>oRRS18to6v3</mask>
     </model_grid>
 
+    <model_grid alias="TL319_delawareV2" compset="(DATM|XATM|SATM)">
+      <grid name="atm">TL319</grid>
+      <grid name="lnd">lnd-delawareV2</grid>
+      <grid name="ocnice">ocn-delawareV2</grid>
+      <grid name="rof">lnd-delawareV2</grid>
+      <grid name="glc">null</grid>
+      <grid name="wav">null</grid>
+      <mask>ocn-delawareV2</mask>
+    </model_grid>
+
     <model_grid alias="ne0vr28natlref_delawareV2" compset="(DATM|XATM|SATM)">
       <grid name="atm">ne0np4_vr28natlref</grid>
       <grid name="lnd">lnd-delawareV2</grid>
@@ -2308,6 +2318,8 @@
       <file grid="ice|ocn" mask="ECwISC30to60E2r1">$DIN_LOC_ROOT/share/domains/domain.ocn.TL319_ECwISC30to60E2r1.201007.nc</file>
       <file grid="atm|lnd" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.lnd.TL319_oRRS18to6v3.220124.nc</file>
       <file grid="ice|ocn" mask="oRRS18to6v3">$DIN_LOC_ROOT/share/domains/domain.ocn.TL319_oRRS18to6v3.220124.nc</file>
+      <file grid="atm|lnd" mask="ocn-delawareV2">$DIN_LOC_ROOT/share/domains/domain.lnd.TL319_EC30to60E2r2.201005.nc</file>
+      <file grid="ice|ocn" mask="ocn-delawareV2">$DIN_LOC_ROOT/share/domains/domain.ocn.TL319_EC30to60E2r2.201005.nc</file>
       <desc>TL319 is JRA lat/lon grid:</desc>
     </domain>
 
@@ -3951,6 +3963,26 @@
       <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/TL319/map_TL319_to_oRRS18to6v3_patch.220124.nc</map>
       <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/oRRS18to6v3/map_oRRS18to6v3_to_TL319_aave.220124.nc</map>
       <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/oRRS18to6v3/map_oRRS18to6v3_to_TL319_aave.220124.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="TL319" ocn_grid="ocn-delawareV2">
+      <map name="ATM2OCN_FMAPNAME">cpl/gridmaps/TL319/map_TL319_to_ocn-delawareV2_aave.230104.nc</map>
+      <map name="ATM2OCN_SMAPNAME">cpl/gridmaps/TL319/map_TL319_to_ocn-delawareV2_bilin.230104.nc</map>
+      <map name="ATM2OCN_VMAPNAME">cpl/gridmaps/TL319/map_TL319_to_ocn-delawareV2_patch.230104.nc</map>
+      <map name="OCN2ATM_FMAPNAME">cpl/gridmaps/oRRS18to6v3/map_ocn-delawareV2_to_TL319_aave.220104.nc</map>
+      <map name="OCN2ATM_SMAPNAME">cpl/gridmaps/oRRS18to6v3/map_ocn-delawareV2_to_TL319_aave.220104.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="TL319" lnd_grid="lnd-delawareV2">
+      <map name="ATM2LND_FMAPNAME">cpl/gridmaps/TL319/map_TL319_to_lnd-delawareV2_aave.230104.nc</map>
+      <map name="ATM2LND_SMAPNAME">cpl/gridmaps/TL319/map_TL319_to_lnd-delawareV2_bilin.230104.nc</map>
+      <map name="LND2ATM_FMAPNAME">cpl/gridmaps/TL319/map_lnd-delawareV2_to_TL319_aave.230104.nc</map>
+      <map name="LND2ATM_SMAPNAME">cpl/gridmaps/TL319/map_lnd-delawareV2_to_TL319_aave.230104.nc</map>
+    </gridmap>
+
+    <gridmap atm_grid="TL319" rof_grid="lnd-delawareV2">
+      <map name="ATM2ROF_FMAPNAME">cpl/gridmaps/TL319/map_TL319_to_lnd-delawareV2_aave.230104.nc</map>
+      <map name="ATM2ROF_SMAPNAME">cpl/gridmaps/TL319/map_TL319_to_lnd-delawareV2_aave.230104.nc</map>
     </gridmap>
 
     <gridmap atm_grid="ne0np4_vr28natlref" ocn_grid="ocn-surge25p25">
