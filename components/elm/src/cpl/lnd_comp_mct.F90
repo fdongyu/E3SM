@@ -12,6 +12,7 @@ module lnd_comp_mct
   use mct_mod          , only : mct_avect, mct_gsmap
   use decompmod        , only : bounds_type, ldecomp
   use lnd_import_export
+  use cyberwaterMod    , only : cyberwater_init
   !
   ! !public member functions:
   implicit none
@@ -248,6 +249,8 @@ contains
     ! Read namelist, grid and surface data
 
     call initialize1( )
+
+    call cyberwater_init()
 
     ! If no land then exit out of initialization
 
