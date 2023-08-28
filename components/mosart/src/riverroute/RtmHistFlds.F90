@@ -11,7 +11,7 @@ module RtmHistFlds
   use shr_kind_mod   , only: r8 => shr_kind_r8
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, rstraflag, use_ocn_rof_two_way
+  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, rstraflag, use_ocn_rof_two_way, use_dnstrm_boundary
 
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
 
@@ -250,7 +250,7 @@ contains
            ptr_rof=WRMUnit%resrv_surf)
     endif
 
-    if (use_ocn_rof_two_way) then
+    if (use_ocn_rof_two_way .OR. use_dnstrm_boundary) then
       call RtmHistAddfld (fname='SSH', units='m',  &
            avgflag='A', long_name='MOSART sea surface height ', &
            ptr_rof=rtmCTL%ssh, default='active')

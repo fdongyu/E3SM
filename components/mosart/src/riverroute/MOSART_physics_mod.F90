@@ -13,7 +13,7 @@ MODULE MOSART_physics_mod
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
-  use RtmVar        , only : iulog, barrier_timers, wrmflag, inundflag, sediflag, heatflag, rstraflag, use_ocn_rof_two_way
+  use RtmVar        , only : iulog, barrier_timers, wrmflag, inundflag, sediflag, heatflag, rstraflag, use_ocn_rof_two_way, use_dnstrm_boundary
   use RunoffMod     , only : Tctl, TUnit, TRunoff, Theat, TPara, rtmCTL, &
                              SMatP_upstrm, avsrc_upstrm, avdst_upstrm, SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm
   use MOSART_heat_mod
@@ -62,6 +62,7 @@ MODULE MOSART_physics_mod
     implicit none    
     
     integer :: iunit, idam, m, k, unitUp, cnt, ier, dd, nSubStep   !local index
+    integer :: ind
     real(r8) :: temp_erout, localDeltaT, temp_haout, temp_Tt, temp_Tr, temp_T, temp_ha
     real(r8) :: mud_erout, san_erout, temp_ehexch, temp_etexch, temp_erexch
     real(r8) :: negchan, numSubSteps
@@ -432,6 +433,20 @@ MODULE MOSART_physics_mod
              do iunit=rtmCTL%begr,rtmCTL%endr
                 if ( (rtmCTL%mask(iunit) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit) .eq. 1) ) then
                    TRunoff%yr_dstrm(iunit) = rtmCTL%ssh(iunit) + Tunit%vdatum_conversion(iunit) ! assign ocn's water depth to the dstrm component of the specified outlet cell 
+                end if
+             end do
+          end if
+
+          ! add dnstrm BC from data
+          if (use_dnstrm_boundary) then
+             do iunit=rtmCTL%begr,rtmCTL%endr
+                if ( (rtmCTL%mask(iunit) .eq. 3) .and. (TUnit%ocn_rof_coupling_ID(iunit) .eq. 1) ) then
+                   ind = findNearest(rtmCTL%lonc(iunit), rtmCTL%latc(iunit))
+                   TRunoff%yr_dstrm(iunit) = rtmCTL%wl_inst(ind)
+                   TRunoff%ssh(iunit) = rtmCTL%wl_inst(ind)
+                   if (TRunoff%yr_dstrm(iunit) .lt. 0) then
+                      TRunoff%yr_dstrm(iunit) = 0
+                   end if
                 end if
              end do
           end if
@@ -830,7 +845,7 @@ MODULE MOSART_physics_mod
     if(Tctl%RoutingMethod == KW) then
        call Routing_KW(iunit, nt, theDeltaT)
     else if(Tctl%RoutingMethod == DW) then
-       if ( use_ocn_rof_two_way ) then
+       if ( use_ocn_rof_two_way .OR. use_dnstrm_boundary ) then
           call Routing_DW_ocn_rof_two_way(iunit, nt, theDeltaT)
        else
           call Routing_DW(iunit, nt, theDeltaT)
@@ -1138,9 +1153,9 @@ MODULE MOSART_physics_mod
        TRunoff%erout(iunit,nt) = -TRunoff%erin(iunit,nt)-TRunoff%erlateral(iunit,nt)
     else
        ! when ocn rof two-way coupling is on, use DW in the specified outlets
-       if ( .not. use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 ) then !If this channel is at basin outlet (downstream is ocean), use the KW method
+       if ( .not. (use_ocn_rof_two_way.OR.use_dnstrm_boundary) .and. rtmCTL%mask(iunit) .eq. 3 ) then !If this channel is at basin outlet (downstream is ocean), use the KW method
           call Routing_KW(iunit, nt, theDeltaT)
-       elseif ( use_ocn_rof_two_way .and. rtmCTL%mask(iunit) .eq. 3 .and. TUnit%ocn_rof_coupling_ID(iunit) .eq. 0 ) then
+       elseif ( (use_ocn_rof_two_way.OR.use_dnstrm_boundary) .and. rtmCTL%mask(iunit) .eq. 3 .and. TUnit%ocn_rof_coupling_ID(iunit) .eq. 0 ) then
           call Routing_KW(iunit, nt, theDeltaT)
        else
 !          TODO: conc_r
@@ -1689,6 +1704,32 @@ MODULE MOSART_physics_mod
                      TRunoff%etin(IDlist(5),1)/TUnit%area(IDlist(5)), TRunoff%erlateral(IDlist(5),1)/TUnit%area(IDlist(5)), TRunoff%flow(IDlist(5),1)
   
   end subroutine printTest
+
+!-----------------------------------------------------------------------
+
+  function findNearest(lonc_, latc_) result(ind_)
+  ! Function for finding the index with nearest distance
+    implicit none
+    real(r8), intent(in) :: lonc_, latc_    ! cell coordinates
+
+    integer              :: inds(1)         ! index of nearest station
+    integer              :: ind_            ! index of nearest station
+    real(r8),allocatable :: distance(:)
+    integer              :: i               ! loop index
+    character(len=*),parameter :: subname = '(findnearest)'
+
+    allocate(distance(rtmCTL%nstation_wl))
+
+    do i = 1, rtmCTL%nstation_wl
+        distance(i) = sqrt( (lonc_ - rtmCTL%lon_wl(i))**2 + (latc_ - rtmCTL%lat_wl(i))**2 ) 
+    end do
+
+    inds = MINLOC (distance)
+    ind_ = inds(1)
+
+    deallocate(distance)
+
+  end function findNearest
 
 !-----------------------------------------------------------------------
 

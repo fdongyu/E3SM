@@ -27,9 +27,9 @@ module rof_comp_mct
                                 inst_index, inst_suffix, inst_name, RtmVarSet, &
                                 wrmflag, heatflag, data_bgc_fluxes_to_ocean_flag, &
                                 inundflag, use_lnd_rof_two_way, use_ocn_rof_two_way, &
-                                sediflag
+                                sediflag, use_dnstrm_boundary
   use RtmSpmd          , only : masterproc, mpicom_rof, npes, iam, RtmSpmdInit, ROFID
-  use RtmMod           , only : Rtmini, Rtmrun
+  use RtmMod           , only : Rtmini, Rtmrun, dnstrm_boundary_init, dnstrm_boundary_set
   use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
 
@@ -257,6 +257,11 @@ contains
     ! Read namelist, grid and surface data
     call Rtmini(rtm_active=rof_prognostic,flood_active=flood_present)
 
+    ! initialize downstream boundary data
+    if (use_dnstrm_boundary) then
+       call dnstrm_boundary_init()    
+    end if
+
     if (rof_prognostic) then
        ! Initialize memory for input state
        begr = rtmCTL%begr
@@ -358,6 +363,13 @@ contains
     call t_startf ('lc_rof_import')
     call rof_import_mct( x2r_r)
     call t_stopf ('lc_rof_import')
+
+    ! set downstream water level
+    if (use_dnstrm_boundary) then
+       call t_startf ('lc_dnstrm_boundary')
+       call dnstrm_boundary_set(ymd, tod_sync)
+       call t_stopf ('lc_dnstrm_boundary')
+    end if
 
     ! Run mosart (input is *runin, output is rtmCTL%runoff)
     ! First advance mosart time step
