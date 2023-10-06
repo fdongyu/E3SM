@@ -551,7 +551,7 @@ contains
     call shr_file_setLogLevel(shrloglev)
 
     ! Run CyberWater
-    call cyberwater_run(EClock)
+    call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
   
 #if (defined _MEMTRACE)
     if(masterproc) then

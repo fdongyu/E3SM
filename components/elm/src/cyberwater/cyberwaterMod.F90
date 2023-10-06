@@ -3,6 +3,10 @@ module cyberwaterMod
   use spmdMod      , only : mpicom, masterproc
   use shr_kind_mod , only : r8 => shr_kind_r8
   use shr_sys_mod  , only : shr_sys_flush
+  use mct_mod      , only : mct_avect
+  use decompmod    , only : bounds_type
+  use seq_cdata_mod, only : seq_cdata
+  use cw_import_export
 
   implicit none
 
@@ -38,12 +42,13 @@ contains
 
 
   !-----------------------------------------------------------------------
-  subroutine cyberwater_run(EClock)
+  subroutine cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
     !
     ! !DESCRIPTION:
-    ! Initialize RDycore
+    ! Run CyberWater
     !
     ! !USES:
+    use shr_kind_mod    ,  only : r8 => shr_kind_r8
     !use clm_time_manager,  only : get_curr_date, get_nstep, get_curr_calday, get_step_size
     use shr_file_mod    ,  only : shr_file_setLogUnit, shr_file_setLogLevel
     use seq_timemgr_mod ,  only : seq_timemgr_EClockGetData
@@ -52,6 +57,10 @@ contains
     !
     ! !ARGUMENTS:
     type(ESMF_Clock) , intent(inout) :: EClock    ! Input synchronization clock from driver
+    type(bounds_type), intent(in)    :: bounds    ! bounds
+    type(seq_cdata)  , intent(inout) :: cdata_l   ! Input driver data for land model
+    type(mct_aVect)  , intent(inout) :: x2l_l     ! Import state to land model
+    type(mct_aVect)  , intent(inout) :: l2x_l     ! Export state from land model
     !
     ! !LOCAL VARIABLES
     integer      :: ymd_sync             ! Sync date (YYYYMMDD)
@@ -83,7 +92,7 @@ contains
 
     ! import data from coupler
     call t_startf ('cyberwater_import')
-    !lnd_import_mct(x2l)
+    call cw_import_mct(bounds, x2l_l%rattr)
     call t_stopf ('cyberwater_import')
     
     ! run cyberwater
@@ -122,7 +131,6 @@ contains
     if (masterproc) then
       write(iulog,*) 'Finishing CyberWater'
     end if
-
 
 
   end subroutine cyberwater_final
