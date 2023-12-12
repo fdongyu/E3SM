@@ -151,6 +151,7 @@ function(build_model COMP_CLASS COMP_NAME)
     set(LNDOBJDIR "${EXEROOT}/lnd/obj")
     set(LNDLIBDIR "${LIBROOT}")
     if (COMP_LND STREQUAL "elm")
+      e3sm_add_flags("${SOURCE_FILE}" "${CFLAGS}") ## Dongyu
       set(LNDLIB "libelm.a")
     else()
       set(LNDLIB "liblnd.a")

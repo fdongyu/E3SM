@@ -6,6 +6,7 @@ module cw_import_export
   use decompmod    , only : bounds_type, ldecomp
   use elm_cpl_indices
   use mpi
+  !use, intrinsic :: iso_c_binding
   use c_interface_combined
 
   implicit none
@@ -48,6 +49,7 @@ contains
     ! MPI variables
     integer :: iProc, nProcs
     integer :: Nvar=3
+    character(len=27), dimension(:), allocatable :: stringArray(:)
     real(r8),allocatable :: globalArray(:,:)  ! global array to pack all data
     real(r8),allocatable :: globalArray1D(:)  ! global array to pack all data
     real(r8),allocatable :: llat(:), llon(:)  ! local
@@ -116,6 +118,9 @@ contains
 
     ! Allocate global array only on master processor
     if (masterproc) then
+       allocate(stringArray(3))
+       stringArray = ["Latitude [degree]          ", "Longitude [degree]         ", "Bottom atm level height [m]"]
+
        allocate(glat(gsize))
        allocate(glon(gsize))
        allocate(Sa_z(gsize))
@@ -146,7 +151,28 @@ contains
 !       write (6,*) glon
 !       write (6,*) Sa_z
 !       write (6,*) globalArray
+        write (6,*) stringArray
         write (6,*) globalArray1D
+    end if
+
+    if (masterproc) then
+       ! Send float array to server
+       !status_send = send_data_to_server(arr_send, size(arr_send))
+       status_send = send_data_to_server(globalArray1D, size(globalArray1D))
+       if (status_send /= 0) then
+          print *, "Failed to send data to server"
+       else
+          print *, "Data sent successfully!"
+       end if
+
+       ! Fetch float array from server
+       status_fetch = fetch_data_from_server(arr_fetch, size(arr_fetch))
+       if (status_fetch /= 0) then
+          print *, "Failed to fetch data from server"
+       else
+          print *, "Data received:", arr_fetch
+       end if
+
     end if
 
 
@@ -192,32 +218,13 @@ contains
     end do
 
 
-    if (masterproc) then
-       ! Send float array to server
-       status_send = send_data_to_server(arr_send, size(arr_send))
-       if (status_send /= 0) then
-          print *, "Failed to send data to server"
-       else
-          print *, "Data sent successfully!"
-       end if
-
-       ! Fetch float array from server
-       status_fetch = fetch_data_from_server(arr_fetch, size(arr_fetch))
-       if (status_fetch /= 0) then
-          print *, "Failed to fetch data from server"
-       else
-          print *, "Data received:", arr_fetch
-       end if
-    end if
-
-
-
     ! free memory
     deallocate(gindex)
     !deallocate(Sa_z_l)
 
 
     if (masterproc) then
+       deallocate(stringArray)
        deallocate(glat)
        deallocate(glon)
        deallocate(Sa_z)

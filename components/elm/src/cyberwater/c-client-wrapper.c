@@ -14,7 +14,8 @@ size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
 }
 
 // Function to send data to server
-int send_data_to_server(float arr[], int n) {
+//int send_data_to_server(float arr[], int n) {
+int send_data_to_server(double arr[], int n) {
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
@@ -27,10 +28,11 @@ int send_data_to_server(float arr[], int n) {
 
     headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
 
-    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.48:8080/send_data");
+    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.30:8080/send_data");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, arr);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, sizeof(float) * n);
+    //curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, sizeof(float) * n);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, sizeof(double) * n);
 
     res = curl_easy_perform(curl);
 
@@ -56,7 +58,7 @@ int fetch_data_from_server(float arr[], int n) {
         return -1;
     }
 
-    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.48:8080/get_data");
+    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.30:8080/get_data");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, arr);
 
