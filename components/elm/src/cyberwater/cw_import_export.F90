@@ -1,12 +1,13 @@
 module cw_import_export
 
   use shr_kind_mod , only: r8 => shr_kind_r8
+  use shr_sys_mod  , only : shr_sys_flush
   use abortutils   , only: endrun
   use spmdMod      , only : mpicom, masterproc
   use decompmod    , only : bounds_type, ldecomp
   use elm_cpl_indices
   use mpi
-  !use, intrinsic :: iso_c_binding
+  use cw_cpl_indices
   use c_interface_combined
 
   implicit none
@@ -21,6 +22,15 @@ module cw_import_export
   integer :: nCellsGlobal
   integer, dimension(:), allocatable :: nCellsDisplacement, indexToCellIDGathered
   integer, dimension(:), allocatable :: nCellsPerProc
+
+  type, public :: e3sm2cw_type
+
+     integer :: id_source_model  ! identifier for source model
+     integer :: id_dest_model  ! identifier for destination model 
+     integer :: dataSize     ! data size
+     real(r8),allocatable :: dataArray1D(:)  ! 1D data array
+  
+  end type e3sm2cw_type
 
 
 contains
@@ -48,18 +58,24 @@ contains
 
     ! MPI variables
     integer :: iProc, nProcs
-    integer :: Nvar=3
-    character(len=27), dimension(:), allocatable :: stringArray(:)
-    real(r8),allocatable :: globalArray(:,:)  ! global array to pack all data
-    real(r8),allocatable :: globalArray1D(:)  ! global array to pack all data
-    real(r8),allocatable :: llat(:), llon(:)  ! local
+    !integer :: Nvar=3
+    !real(r8),allocatable :: globalArray1D(:)  ! global array to pack all data
     real(r8),allocatable :: glat(:), glon(:)  ! global
-    real(r8),allocatable :: Sa_z(:)  ! bottom atm level height (m),  Sa_z_l(:) 
+    real(r8),allocatable :: Sa_z(:)  ! bottom atm level height    m
+    real(r8),allocatable :: Sa_u(:)  ! bottom atm level zon wind  m/s
+    real(r8),allocatable :: Sa_v(:)  ! bottom atm level mer wind  m/s
+
+    type(e3sm2cw_type) :: lat_sent, lon_sent
 
     ! communicate variables
     integer :: status_send, status_fetch
-    real, dimension(5) :: arr_send = [1.2, 3.4, 5.6, 7.8, 9.10]
-    real, dimension(5) :: arr_fetch
+    real(r8),allocatable :: arr_fetch(:)
+    integer :: Narr_fetch=2000
+
+    ! periodically check if data is sent/received
+    integer :: counter, threshold, value
+    logical :: data_received
+    character(len=*), parameter :: sub = 'cw_import_mct'
 
     if (masterproc) then
       write(6,*) 'Importing variables from drv'
@@ -112,21 +128,16 @@ contains
     end if
 
 
-    ! Allocate local array
-    !allocate(llon(bounds%begg:bounds%endg),stat=ier)
-    !allocate(Sa_z_l(lsize))
-
     ! Allocate global array only on master processor
     if (masterproc) then
-       allocate(stringArray(3))
-       stringArray = ["Latitude [degree]          ", "Longitude [degree]         ", "Bottom atm level height [m]"]
-
        allocate(glat(gsize))
        allocate(glon(gsize))
        allocate(Sa_z(gsize))
-       allocate(globalArray(Nvar,gsize))
-       allocate(globalArray1D(Nvar*gsize))
+       allocate(Sa_u(gsize))
+       allocate(Sa_v(gsize))
+       !allocate(globalArray1D(Nvar*gsize))
     end if 
+
 
     ! Gather lat and lon first
     call MPI_GATHERV(ldomain%latc, lsize, MPI_DOUBLE, glat, nCellsPerProc, &
@@ -137,103 +148,125 @@ contains
     ! Gather variables before sending to CW
     call MPI_GATHERV(x2l(index_x2l_Sa_z,:), lsize, MPI_DOUBLE, Sa_z, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(x2l(index_x2l_Sa_u,:), lsize, MPI_DOUBLE, Sa_u, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(x2l(index_x2l_Sa_v,:), lsize, MPI_DOUBLE, Sa_v, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+
 
     call MPI_Barrier(mpicom, ier)
 
+    ! send_data_to_DEserver(int source_model_ID, int destination_model_ID, int variable_ID, int variable_unit,  double data_array, int num_elements, int error_val)
     if (masterproc) then
-       globalArray(1,:) = glat(:)
-       globalArray(2,:) = glon(:)
-       globalArray(3,:) = Sa_z(:)
-       globalArray1D(1:gsize) = glat(:)
-       globalArray1D(gsize+1:gsize*2) = glon(:)
-       globalArray1D(gsize*2+1:gsize*3) = Sa_z(:)
+       write (6,*) 'source_model_ID, destination_model_ID, variable_ID, variable_unit, num_elements, data_array', index_EAM, index_VIC5, index_a2l_latitude, index_degree, gsize, glat
+       write (6,*) 'source_model_ID, destination_model_ID, variable_ID, variable_unit, num_elements, data_array', index_EAM, index_VIC5, index_a2l_longitude, index_degree, gsize, glon
+       write (6,*) 'source_model_ID, destination_model_ID, variable_ID, variable_unit, num_elements, data_array', index_EAM, index_VIC5, index_Sa_z, index_meter, gsize, Sa_z
+       write (6,*) 'source_model_ID, destination_model_ID, variable_ID, variable_unit, num_elements, data_array', index_EAM, index_VIC5, index_Sa_u, index_meter, gsize, Sa_u
+       write (6,*) 'source_model_ID, destination_model_ID, variable_ID, variable_unit, num_elements, data_array', index_EAM, index_VIC5, index_Sa_v, index_meter, gsize, Sa_v
+    end if
+
+    ! check if data is sent
+    if (masterproc) then
+
+       ! Initialize counter and threshold
+       counter = 0
+       threshold = 100
+       data_received = .false.
+
+       ! Loop until data is received or counter exceeds the threshold
+       do while (.not. data_received .and. counter < threshold)
+          counter = counter + 1
+      
+          ! Check if data is received 
+          value = get_value()   ! Replace get_value() with check flag to obtain the value
+          write(6,*) "random value=", value
+          if (value <= 10) then ! Data is received
+             data_received = .true.
+          end if
+
+          if (.not. data_received) then
+             write (6,*) "Data not received. Sleeping for 30 seconds..."
+             call sleep(30) 
+          end if
+       end do
+
+       ! Check if data is received
+       if (.not. data_received) then
+          call endrun( sub//' ERROR: Maximum threshold reached. Data sent not successful' )
+       else
+          write(6, *) "Data is received"
+       end if
+
+    end if
+
+!    if (masterproc) then
+!       globalArray1D(1:gsize) = glat(:)
+!       globalArray1D(gsize+1:gsize*2) = glon(:)
+!       globalArray1D(gsize*2+1:gsize*3) = Sa_z(:)
 !       write (6,*) glat
 !       write (6,*) glon
 !       write (6,*) Sa_z
-!       write (6,*) globalArray
-        write (6,*) stringArray
-        write (6,*) globalArray1D
-    end if
-
-    if (masterproc) then
-       ! Send float array to server
-       !status_send = send_data_to_server(arr_send, size(arr_send))
-       status_send = send_data_to_server(globalArray1D, size(globalArray1D))
-       if (status_send /= 0) then
-          print *, "Failed to send data to server"
-       else
-          print *, "Data sent successfully!"
-       end if
-
-       ! Fetch float array from server
-       status_fetch = fetch_data_from_server(arr_fetch, size(arr_fetch))
-       if (status_fetch /= 0) then
-          print *, "Failed to fetch data from server"
-       else
-          print *, "Data received:", arr_fetch
-       end if
-
-    end if
+!        write (6,*) globalArray1D
+!    end if
 
 
-    do g = bounds%begg,bounds%endg
-       i = 1 + (g - bounds%begg)
-!       Sa_z_l(i) = x2l(index_x2l_Sa_z,i)
-!       write (6,*) ldomain%lonc(g), ldomain%latc(g)
-!       write (6,*) x2l(index_x2l_Sa_z,i)         ! bottom atm level height   m
-!       write (6,*) x2l(index_x2l_Sa_u,i)         ! bottom atm level zon wind m/s
-!       write (6,*) x2l(index_x2l_Sa_v,i)         ! bottom atm level mer wind m/s
-!       write (6,*) x2l(index_x2l_Sa_ptem,i)      ! bottom atm level pot temp Atm State K
-!       write (6,*) x2l(index_x2l_Sa_shum,i)      ! bottom atm level spec hum Atm state kg/kg
-!       write (6,*) x2l(index_x2l_Sa_pbot,i)      ! bottom atm level pressure Atm state Pa
-!       write (6,*) x2l(index_x2l_Sa_tbot,i)      ! bottom atm level temp     Atm state K
-!       write (6,*) x2l(index_x2l_Faxa_lwdn,i)    ! downward lw heat flux     Atm flux  W/m^2
-!       write (6,*) x2l(index_x2l_Faxa_rainc,i)   ! prec: liquid "convective" mm/s
-!       write (6,*) x2l(index_x2l_Faxa_rainl,i)   ! prec: liquid "large scale"  mm/s
-!       write (6,*) x2l(index_x2l_Faxa_snowc,i)   ! prec: frozen "convective" mm/s
-!       write (6,*) x2l(index_x2l_Faxa_snowl,i)   ! prec: frozen "large scale"  mm/s
-!       write (6,*) x2l(index_x2l_Faxa_swndr,i)   ! sw: nir direct  downward Atm flux  W/m^2
-!       write (6,*) x2l(index_x2l_Faxa_swvdr,i)   ! sw: vis direct  downward Atm flux  W/m^2 
-!       write (6,*) x2l(index_x2l_Faxa_swndf,i)   ! sw: nir diffuse downward Atm flux  W/m^2
-!       write (6,*) x2l(index_x2l_Faxa_swvdf,i)   ! sw: vis diffuse downward Atm flux  W/m^2
+!    if (masterproc) then
+!       lon_sent%id_var_e3sm = 1
+!       lon_sent%id_model_cw = 201
+!       lon_sent%dataSize = gsize
 
-!       write (6,*) x2l(index_x2l_Sa_co2prog,i)   ! bottom atm level prognostic co2 
-!       write (6,*) x2l(index_x2l_Sa_co2diag,i)   ! bottom atm level diagnostic co2
+!       ! Allocate and assign values to array_attribute
+!       allocate(lon_sent%dataArray1D(gsize))
+!       lon_sent%dataArray1D = glon
 
-       ! atmosphere coupling, for prognostic/prescribed aerosols
-!       write (6,*) x2l(index_x2l_Faxa_bcphidry,i) ! flux: Black Carbon hydrophilic dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_bcphodry,i) ! flux: Black Carbon hydrophobic dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_bcphiwet,i) ! flux: Black Carbon hydrophilic wet deposition
-!       write (6,*) x2l(index_x2l_Faxa_ocphidry,i) ! flux: Organic Carbon hydrophilic dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_ocphodry,i) ! flux: Organic Carbon hydrophobic dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_ocphiwet,i) ! flux: Organic Carbon hydrophilic dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstwet1,i)  ! flux: Size 1 dust -- wet deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstdry1,i)  ! flux: Size 1 dust -- dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstwet2,i)  ! flux: Size 2 dust -- wet deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstdry2,i)  ! flux: Size 2 dust -- dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstwet3,i)  ! flux: Size 3 dust -- wet deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstdry3,i)  ! flux: Size 3 dust -- dry deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstwet4,i)  ! flux: Size 4 dust -- wet deposition
-!       write (6,*) x2l(index_x2l_Faxa_dstdry4,i)  ! flux: Size 4 dust -- dry deposition
-    end do
+!       ! print for testing
+!       write (6,*) 'lon_sent%id_var_e3sm=', lon_sent%id_var_e3sm
+!       write (6,*) 'lon_sent%id_model_cw=', lon_sent%id_model_cw
+!       write (6,*) 'lon_sent%dataSize=', lon_sent%dataSize
+!       write (6,*) 'lon_sent%dataArray1D=', lon_sent%dataArray1D
+
+!    end if
 
 
     ! free memory
     deallocate(gindex)
-    !deallocate(Sa_z_l)
 
 
     if (masterproc) then
-       deallocate(stringArray)
        deallocate(glat)
        deallocate(glon)
        deallocate(Sa_z)
+       deallocate(Sa_u)
+       deallocate(Sa_v)
        deallocate(nCellsPerProc)
        deallocate(nCellsDisplacement)
        deallocate(indexToCellIDGathered)
+       !deallocate(globalArray1D)
+       !deallocate(lon_sent%dataArray1D)
     end if
 
 
   end subroutine cw_import_mct
+
+
+
+  function get_value() result(value)
+     ! Implement the logic to get the value
+     ! Return the value
+     integer :: value
+     ! Example: Return a random value between 0 and 20
+     value = randint(0, 20) ! randint is a placeholder, replace it with your actual function
+  end function get_value
+
+  ! Placeholder for the randint function
+  function randint(lower, upper) result(value)
+    integer, intent(in) :: lower, upper
+    integer :: value
+    real :: harvest  ! Declare harvest as real
+    call random_seed()
+    call random_number(harvest)
+    value = lower + int(real(upper - lower + 1) * harvest)
+  end function randint
+
 
 end module cw_import_export

@@ -1,74 +1,48 @@
-// http_client_combined.c
-#include <stdio.h>
 #include <curl/curl.h>
 #include <string.h>
+#include <stdio.h>
 
-// Callback function for writing received data
-size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
+size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
     size_t total_size = size * nmemb;
-    if (total_size <= 5 * sizeof(float)) {
-        memcpy(userdata, ptr, total_size);
-        return total_size;
+    static size_t offset = 0;
+    double *buffer = (double *)userdata;
+
+    if (total_size > 0) {
+        memcpy(buffer + offset, ptr, total_size);
+        offset += total_size / sizeof(double);
     }
-    return 0;
+
+    return total_size;
 }
 
-// Function to send data to server
-//int send_data_to_server(float arr[], int n) {
-int send_data_to_server(double arr[], int n) {
-    CURL *curl;
-    CURLcode res;
-    struct curl_slist *headers = NULL;
+int send_data_to_server(double* arr, int n) {
+    CURL *curl = curl_easy_init();
+    if (!curl) return -1;
 
-    curl = curl_easy_init();
-    if (!curl) {
-        fprintf(stderr, "Failed to initialize curl\n");
-        return -1;
-    }
-
-    headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
-
-    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.30:8080/send_data");
+    struct curl_slist *headers = curl_slist_append(NULL, "Content-Type: application/octet-stream");
+    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.10:8080/receive_data");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, arr);
-    //curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, sizeof(float) * n);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, sizeof(double) * n);
-
-    res = curl_easy_perform(curl);
+    CURLcode res = curl_easy_perform(curl);
 
     curl_slist_free_all(headers);
     curl_easy_cleanup(curl);
-
-    if (res != CURLE_OK) {
-        fprintf(stderr, "Failed to send data: %s\n", curl_easy_strerror(res));
-        return -1;
-    }
-
-    return 0;
+    return (res == CURLE_OK) ? 0 : -1;
 }
 
-// Function to fetch data from server
-int fetch_data_from_server(float arr[], int n) {
-    CURL *curl;
-    CURLcode res;
+int fetch_data_from_server(double* arr, int n) {
+    CURL *curl = curl_easy_init();
+    if (!curl) return -1;
 
-    curl = curl_easy_init();
-    if (!curl) {
-        fprintf(stderr, "Failed to initialize curl\n");
-        return -1;
-    }
+    static size_t offset = 0;
+    offset = 0;  // Reset offset for each fetch
 
-    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.30:8080/get_data");
+    curl_easy_setopt(curl, CURLOPT_URL, "http://128.55.64.10:8080/send_data");
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, arr);
+    CURLcode res = curl_easy_perform(curl);
 
-    res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
-
-    if (res != CURLE_OK) {
-        fprintf(stderr, "Failed to fetch data: %s\n", curl_easy_strerror(res));
-        return -1;
-    }
-
-    return 0;
+    return (res == CURLE_OK) ? 0 : -1;
 }
