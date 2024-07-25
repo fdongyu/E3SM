@@ -2080,6 +2080,11 @@ sub process_namelist_inline_logic {
   # namelist group: elm_mosart_coupling   #
   #########################################
   setup_elm_mosart_coupling($opts, $nl_flags, $definition, $defaults, $nl);
+
+  ##################################
+  # namelist group: cyberwater  #
+  ##################################
+  setup_logic_cyberwater_streams($opts, $nl_flags, $definition, $defaults, $nl);
 }
 
 #-------------------------------------------------------------------------------
@@ -3319,6 +3324,7 @@ sub setup_logic_lai_streams {
   }
 }
 
+
 #-------------------------------------------------------------------------------
 
 sub setup_logic_snowpack {
@@ -3370,6 +3376,22 @@ sub setup_elm_mosart_coupling {
    fatal_error("can NOT set both -l_ncpl or -r_ncpl option (via LND_NCPL/ROF_NCPL env variable) AND lnd_rof_coupling_nstep namelist variable.\n");
   }
 }
+
+#------------------------------------------------------------------------------- cyberwater
+  
+sub setup_logic_cyberwater_streams {
+  # cyberwater streams
+  my ($test_files, $nl_flags, $definition, $defaults, $nl) = @_;
+
+  add_default($test_files, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'use_cyberwater');
+
+  my $stream_cyberwater = $nl->get_value('stream_cyberwater');
+
+  if ( ! defined($stream_cyberwater)  ) {
+  #add_default($test_files, $nl_flags->{'inputdata_rootdir'}, $definition, $defaults, $nl, 'stream_cyberwater');
+   add_default($test_files, $nl_flags->{''}, $definition, $defaults, $nl, 'stream_cyberwater');
+  } 
+} 
 
 #-------------------------------------------------------------------------------
 
@@ -3461,7 +3483,7 @@ sub write_output_files {
   {
     @groups = qw(elm_inparm ndepdyn_nml pdepdyn_nml popd_streams light_streams lai_streams elm_canopyhydrology_inparm
                  elm_soilhydrology_inparm dynamic_subgrid finidat_consistency_checks dynpft_consistency_checks
-                 elmu_inparm elm_soilstate_inparm elm_pflotran_inparm betr_inparm elm_mosart);
+                 elmu_inparm elm_soilstate_inparm elm_pflotran_inparm betr_inparm elm_mosart cyberwater_streams);
     #@groups = qw(elm_inparm elm_canopyhydrology_inparm elm_soilhydrology_inparm
     #             finidat_consistency_checks dynpft_consistency_checks);
     # Eventually only list namelists that are actually used when CN on

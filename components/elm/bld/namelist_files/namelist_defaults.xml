@@ -813,6 +813,11 @@ this mask will have smb calculated over the entire global land surface
 <lai_mapalgo  hgrid="1x1_tropicAtl"       >nn</lai_mapalgo>
 <lai_mapalgo  hgrid="5x5_amazon"          >nn</lai_mapalgo>
 
+<!-- cyberwater streams namelist defaults -->
+<use_cyberwater         >.false.</use_cyberwater>
+<!--stream_cyberwater hgrid="360x720cru"       >lnd/clm2/lai_streams/MODISPFTLAI_0.5x0.5_c140711.nc</stream_cyberwater -->
+<stream_cyberwater      >/global/homes/f/feng779/VIC/files/cyberwater_in.dat</stream_cyberwater>
+
 <!-- lightning streams namelist defaults -->
 <stream_year_first_lightng use_cn=".true."   >0001</stream_year_first_lightng>
 <stream_year_last_lightng  use_cn=".true."   >0001</stream_year_last_lightng>

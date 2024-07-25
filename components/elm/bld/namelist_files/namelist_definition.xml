@@ -774,6 +774,16 @@ Optional flag to turn on the fan mode coupling atm/soil.
     fan_full    = fan coupled to both soil bgc and atmosphere
 </entry>
 
+<entry id="use_cyberwater" type="logical" category="physics"
+	group="elm_inparm" valid_values="" value=".false.">
+Toggle to turn on cyberwater coupling.
+</entry>
+
+<entry id="stream_cyberwater" type="char*256(30)" category="datasets"
+       input_pathname="abs" group="cyberwater_streams" valid_values="" >
+Filename of input stream data for cyberwater 
+</entry>
+
 <!--                                                   -->
 <!-- mkmapdata  namelist                               -->
 <!--                                                   -->
