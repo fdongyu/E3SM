@@ -270,6 +270,8 @@ contains
 
     namelist /elm_inparm / use_lai_streams
 
+    namelist /elm_inparm / use_cyberwater
+
     namelist /elm_inparm/  &
          use_c14_bombspike, atm_c14_filename
 
@@ -826,6 +828,8 @@ contains
     call mpi_bcast (use_betr, 1, MPI_LOGICAL, 0, mpicom, ier)
 
     call mpi_bcast (use_lai_streams, 1, MPI_LOGICAL, 0, mpicom, ier)
+
+    call mpi_bcast (use_cyberwater, 1, MPI_LOGICAL, 0, mpicom, ier)
 
     call mpi_bcast (use_dynroot, 1, MPI_LOGICAL, 0, mpicom, ier)
 
