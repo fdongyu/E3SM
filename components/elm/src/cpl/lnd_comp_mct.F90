@@ -12,7 +12,7 @@ module lnd_comp_mct
   use mct_mod          , only : mct_avect, mct_gsmap
   use decompmod        , only : bounds_type, ldecomp
   use lnd_import_export
-  use cyberwaterMod    , only : cyberwater_init
+  use cyberwaterMod    , only : cyberwater_init, cyberwater_run, cyberwater_final
   use iso_c_binding
   use elm_cpl_indices
   use esmf, only: ESMF_clock
@@ -657,6 +657,9 @@ contains
 
     call shr_file_setLogUnit (shrlogunit)
     call shr_file_setLogLevel(shrloglev)
+
+    ! Run CyberWater
+    call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
   
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -698,6 +701,9 @@ contains
       deallocate (x2l_lm)
 #endif
     call final()
+
+    ! Run CyberWater
+    call cyberwater_final()
 
   end subroutine lnd_final_mct
 
