@@ -430,7 +430,7 @@ contains
     use elm_time_manager,  only : advance_timestep, set_nextsw_cday,update_rad_dtime
     use decompMod       ,  only : get_proc_bounds
     use abortutils      ,  only : endrun
-    use elm_varctl      ,  only : iulog
+    use elm_varctl      ,  only : iulog, use_cyberwater
     use elm_varorb      ,  only : eccen, obliqr, lambm0, mvelpp
     use shr_file_mod    ,  only : shr_file_setLogUnit, shr_file_setLogLevel
     use shr_file_mod    ,  only : shr_file_getLogUnit, shr_file_getLogLevel
@@ -659,7 +659,9 @@ contains
     call shr_file_setLogLevel(shrloglev)
 
     ! Run CyberWater
-    call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
+    if (use_cyberwater) then 
+      call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
+    end if
   
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -683,6 +685,7 @@ contains
     use seq_cdata_mod   ,only : seq_cdata, seq_cdata_setptrs
     use seq_timemgr_mod ,only : seq_timemgr_EClockGetData, seq_timemgr_StopAlarmIsOn
     use seq_timemgr_mod ,only : seq_timemgr_RestartAlarmIsOn, seq_timemgr_EClockDateInSync
+    use elm_varctl      ,only : use_cyberwater
     use mct_mod
     use esmf
     use elm_finalizeMod, only : final
@@ -703,7 +706,9 @@ contains
     call final()
 
     ! Run CyberWater
-    call cyberwater_final()
+    if (use_cyberwater) then
+      call cyberwater_final()
+    end if
 
   end subroutine lnd_final_mct
 

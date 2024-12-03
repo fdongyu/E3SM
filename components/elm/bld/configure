@@ -473,6 +473,7 @@ sub write_filepath_cesmbld
 		     "biogeochem", 
 		     "dyn_subgrid",
 		     "cyberwater",
+		     "cyberwater/DataExchangeAPI/src/clients/e3sm",
 		     "external_models/fates/main",
 		     "external_models/fates/biogeophys",
 		     "external_models/fates/biogeochem",

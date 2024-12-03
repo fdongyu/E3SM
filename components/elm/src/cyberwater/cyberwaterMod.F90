@@ -21,8 +21,8 @@ module cyberwaterMod
   private
 
   integer, public    :: iulog = 6
-  integer(c_int), dimension(5) :: id
   type(session_data) :: sd
+  type(SessionID) :: id
 
 
   public :: cyberwater_init
@@ -119,12 +119,10 @@ contains
       sd%output_variables_ID = [4]
       sd%output_variables_size = [gsize]
 
-      id = [sd%source_model_ID, sd%destination_model_ID, sd%initiator_id, sd%invitee_id, 1]     ! [2001, 2005, 35, 36, 1]
+      ! Write the session_ID for the whole program
+      id = start_session(sd)
       call set_session_id(id)
 
-
-      ! Start the session
-      call start_session(sd)
       print *, "------ Sleeping for 10 seconds ------"
       call sleep(10)
 
@@ -199,25 +197,29 @@ contains
 
     ! import data from coupler
     call t_startf ('cyberwater_import')
-    call cw_import_mct(bounds, x2l_l%rattr)
+    call cw_import_mct(bounds, x2l_l%rattr, id)
     call t_stopf ('cyberwater_import')
+
+    call MPI_Barrier(mpicom, ier)
+
 
     ! run cyberwater
     call t_barrierf('sync_cyberwater_run', mpicom)
     call t_startf ('cyberwater_run')
     if (masterproc) then
       write(iulog,*) 'Running CyberWater'
-
     end if
+    call t_stopf ('cyberwater_run')
 
     call MPI_Barrier(mpicom, ier)
 
-    call t_stopf ('cyberwater_run')
 
     ! export data to coupler
     call t_startf ('cyberwater_export')
-    !call lnd_export_mct(l2x)
+    call cw_export_mct(bounds, x2l_l%rattr, id)
     call t_stopf ('cyberwater_export')
+
+    call MPI_Barrier(mpicom, ier)
 
     ! Reset shr logging to my original values
     call shr_file_setLogUnit (shrlogunit)
