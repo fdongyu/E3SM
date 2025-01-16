@@ -114,8 +114,14 @@ contains
       sd%destination_model_ID = index_VIC5 ! 2005
       sd%initiator_id = initiator_id
       sd%invitee_id = invitee_id
-      sd%input_variables_ID = [index_a2l_latitude, index_a2l_longitude, index_Sa_z] ! 1,2,3
-      sd%input_variables_size = [gsize, gsize, gsize]
+      sd%input_variables_ID = [index_a2l_latitude, index_a2l_longitude, index_Sa_z, &
+                               index_Sa_vel, index_Sa_shum, index_Sa_pbot, &
+                               index_Sa_tbot, index_Faxa_lwdn, index_Faxa_precip, &
+                               index_Faxa_sw, index_Sa_co2prog]
+      sd%input_variables_size = [gsize, gsize, gsize, &
+                                 gsize, gsize, gsize, &
+                                 gsize, gsize, gsize, &
+                                 gsize, gsize]
       sd%output_variables_ID = [4]
       sd%output_variables_size = [gsize]
 

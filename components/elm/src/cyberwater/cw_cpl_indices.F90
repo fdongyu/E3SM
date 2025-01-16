@@ -51,6 +51,9 @@ module cw_cpl_indices
   integer, public :: index_Faxa_dstdry3  = 32     ! Size 3 dust – dry deposition              kg m-2 s-1
   integer, public :: index_Faxa_dstwet4  = 33     ! Size 4 dust – wet deposition              kg m-2 s-1
   integer, public :: index_Faxa_dstdry4  = 34     ! Size 4 dust – dry deposition              kg m-2 s-1
+  integer, public :: index_Sa_vel        = 35     ! Bottom atm level wind velocity            m/s
+  integer, public :: index_Faxa_precip   = 36     ! prec: total                               mm/s
+  integer, public :: index_Faxa_sw       = 37     ! sw: total
 
 
   ! lnd -> atm (101~200)
