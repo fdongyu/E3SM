@@ -122,8 +122,10 @@ contains
                                  gsize, gsize, gsize, &
                                  gsize, gsize, gsize, &
                                  gsize, gsize]
-      sd%output_variables_ID = [4]
-      sd%output_variables_size = [gsize]
+      sd%output_variables_ID = [index_Sl_t, index_Sl_snowh, index_Sl_albd, index_Fall_lat, index_Fall_sen, index_Fall_lwup, index_Fall_evap, index_Fall_swnet, index_Sl_ram1]
+      sd%output_variables_size = [gsize, gsize, gsize, &
+                                  gsize, gsize, gsize, &
+                                  gsize, gsize, gsize]
 
       ! Write the session_ID for the whole program
       id = start_session(sd)
@@ -222,7 +224,7 @@ contains
 
     ! export data to coupler
     call t_startf ('cyberwater_export')
-    call cw_export_mct(bounds, x2l_l%rattr, id)
+    call cw_export_mct(bounds, x2l_l%rattr, l2x_l%rattr, id)
     call t_stopf ('cyberwater_export')
 
     call MPI_Barrier(mpicom, ier)

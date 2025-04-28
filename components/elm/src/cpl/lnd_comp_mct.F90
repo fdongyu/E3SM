@@ -619,7 +619,14 @@ contains
        call shr_orb_decl( calday     , eccen, mvelpp, lambm0, obliqr, declin  , eccf )
        call shr_orb_decl( nextsw_cday, eccen, mvelpp, lambm0, obliqr, declinp1, eccf )
        call t_stopf ('shr_orb_decl')
-       call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+!       call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+
+       ! Run CyberWater
+       if (use_cyberwater) then
+         call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
+       else
+         call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+       end if
        call t_stopf ('elm_run')
 
        ! Create l2x_l export state - add river runoff input to l2x_l if appropriate
@@ -659,9 +666,9 @@ contains
     call shr_file_setLogLevel(shrloglev)
 
     ! Run CyberWater
-    if (use_cyberwater) then 
-      call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
-    end if
+!    if (use_cyberwater) then 
+!      call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
+!    end if
   
 #if (defined _MEMTRACE)
     if(masterproc) then

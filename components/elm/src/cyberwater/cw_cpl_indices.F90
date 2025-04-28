@@ -84,6 +84,7 @@ module cw_cpl_indices
   integer, public :: index_Fall_flxdst2  = 125    ! dust flux size bin 2                      kg m-2 s-1
   integer, public :: index_Fall_flxdst3  = 126    ! dust flux size bin 3                      kg m-2 s-1
   integer, public :: index_Fall_flxdst4  = 127    ! dust flux size bin 4                      kg m-2 s-1
+  integer, public :: index_Sl_albd       = 128    ! Surface albedo average                    1
   
 
   ! units (1001~2000)

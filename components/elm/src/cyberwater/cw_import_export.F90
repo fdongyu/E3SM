@@ -5,6 +5,7 @@ module cw_import_export
   use abortutils   , only: endrun
   use spmdMod      , only : mpicom, masterproc
   use decompmod    , only : bounds_type, ldecomp
+  use elm_instMod  , only : lnd2atm_vars, atm2lnd_vars
   use elm_cpl_indices
   use mpi
   use cw_cpl_indices
@@ -97,6 +98,7 @@ contains
     real(r8), save :: last_exit_time = 0.0  ! Time when subroutine last exited
     real(r8) :: entry_time, outside_time
     logical, save :: first_call = .true.  ! To handle the first call scenario
+    real(r8) :: t_start, t_end, t_elapsed
 
 
     character(len=*), parameter :: sub = 'cw_import_mct'
@@ -175,7 +177,6 @@ contains
        allocate(Faxa_swndf(gsize))
        allocate(Faxa_swvdf(gsize))
        allocate(Sa_co2prog(gsize))
-       !allocate(Sa_co2diag(gsize))
     end if 
 
 
@@ -218,8 +219,6 @@ contains
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
     call MPI_GATHERV(x2l(index_x2l_Sa_co2prog,:), lsize, MPI_DOUBLE, Sa_co2prog, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
-    !call MPI_GATHERV(x2l(index_x2l_Sa_co2diag,:), lsize, MPI_DOUBLE, Sa_co2diag, nCellsPerProc, &
-    !                    nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
 
     call MPI_Barrier(mpicom, ier)
 
@@ -230,7 +229,7 @@ contains
 
       ! Prepare data 
       ! This calculation depends on the hydrological model in CyberWater
-      do i = 0, gsize
+      do i = 1, gsize
         ubot       = Sa_u(i)         ! m/s
         vbot       = Sa_v(i)         ! m/s
         forc_rainc = Faxa_rainc(i)   ! mm/s
@@ -260,6 +259,8 @@ contains
 
       write(iulog,*) "Send data to server !"
 
+      t_start = MPI_WTIME()
+
       send_status = send_data_with_retries(index_a2l_latitude, glat, send_retry_count, send_retry_time, recv_delay)
 
       send_status = send_data_with_retries(index_a2l_longitude, glon, send_retry_count, send_retry_time, recv_delay)
@@ -281,6 +282,10 @@ contains
       send_status = send_data_with_retries(index_Faxa_sw, Faxa_sw, send_retry_count, send_retry_time, recv_delay)
 
       send_status = send_data_with_retries(index_Sa_co2prog, Sa_co2prog, send_retry_count, send_retry_time, recv_delay)
+
+      t_end = MPI_WTIME()
+      t_elapsed = t_end - t_start
+      write(iulog,*) "Time used for sending data from server: ", t_elapsed, " seconds"
     
       ! Record the exit time
       call cpu_time(last_exit_time)
@@ -326,7 +331,7 @@ contains
 
   !===============================================================================
 
-  subroutine cw_export_mct(bounds, l2x, id)
+  subroutine cw_export_mct(bounds, x2l, l2x, id)
 
     !---------------------------------------------------------------------------
     ! !DESCRIPTION:
@@ -338,8 +343,9 @@ contains
     use shr_kind_mod   , only : r8 => shr_kind_r8
     
     ! !ARGUMENTS:
-    type(bounds_type) , intent(in)    :: bounds  ! bounds
-    real(r8)          , intent(out)   :: l2x(:,:)! land to coupler export state on land grid
+    type(bounds_type) , intent(in)    :: bounds   ! bounds
+    real(r8)          , intent(in)    :: x2l(:,:) ! driver import state to land model
+    real(r8)          , intent(out)   :: l2x(:,:) ! land to coupler export state on land grid
     type(SessionID)   , intent(in)    :: id
     
     !
@@ -356,6 +362,57 @@ contains
     integer :: receive_var_id
     real(r8),allocatable :: arr_receive_lat(:)
     real(r8),allocatable :: lat_recv(:)
+    ! Global, variables read from x2l
+    real(r8),allocatable :: Sa_u(:)    ! zonal wind velocity
+    real(r8),allocatable :: Sa_v(:)    ! meridional wind velocity
+    real(r8),allocatable :: Sa_shum(:) ! bottom atm level spec hum Pa
+    real(r8),allocatable :: Sa_tbot(:) ! bottom atm level temp     degree
+    real(r8),allocatable :: Faxa_swndr(:) ! direct near-infrared incident solar radiation W m-2 
+    real(r8),allocatable :: Faxa_swvdr(:) ! direct visible indicent solar radiation W m-2
+    real(r8),allocatable :: Faxa_swndf(:) ! diffuse near-infrared incident solar radiation W m-2 
+    real(r8),allocatable :: Faxa_swvdf(:) ! diffuse visible incident solar radiation W m-2
+    ! Global, variable received from cyberwater
+    real(r8),allocatable :: Sl_t(:)    ! Surface temperature K
+    real(r8),allocatable :: Sl_snowh(:)! Surface snow water equivalent m
+    real(r8),allocatable :: Sl_albd(:) ! Surface albedo average 
+    real(r8),allocatable :: Fall_lat(:)! Latent heat flux W m-2
+    real(r8),allocatable :: Fall_sen(:)! Sensible heat flux W m-2
+    real(r8),allocatable :: Fall_lwup(:) ! Upward longwave heat flux W m-2
+    real(r8),allocatable :: Fall_evap(:) ! Evaporation water flux  kg m-2 s-1
+    real(r8),allocatable :: Fall_swnet(:)! Heat flux shortwave net W m-2
+    real(r8),allocatable :: Sl_ram1(:)   ! Aerodynamic resistance  s/m
+    ! Derived, variables
+    real(r8),allocatable :: Sa_vel(:)  ! bottom atm level zon wind velocity sqrt(Sa_u*Sa_u+Sa_v*Sa_v)  m/s
+    real(r8),allocatable :: Faxa_swndr_cw(:) ! direct near-infrared incident solar radiation W m-2
+    real(r8),allocatable :: Faxa_swvdr_cw(:) ! direct visible indicent solar radiation W m-2
+    real(r8),allocatable :: Faxa_swndf_cw(:) ! diffuse near-infrared incident solar radiation W m-2 
+    real(r8),allocatable :: Faxa_swvdf_cw(:) ! diffuse visible incident solar radiation W m-2
+
+    ! Local for scatter
+    real(r8),allocatable :: Sl_t_local(:)
+    real(r8),allocatable :: Sl_snowh_local(:)
+    real(r8),allocatable :: Faxa_swndr_cw_local(:)
+    real(r8),allocatable :: Faxa_swvdr_cw_local(:)
+    real(r8),allocatable :: Faxa_swndf_cw_local(:)
+    real(r8),allocatable :: Faxa_swvdf_cw_local(:)
+    real(r8),allocatable :: Sa_shum_local(:)
+    real(r8),allocatable :: Sa_tbot_local(:)
+    real(r8),allocatable :: Sa_vel_local(:)
+    real(r8),allocatable :: Sa_u_local(:)
+    real(r8),allocatable :: Sa_v_local(:)
+    real(r8),allocatable :: Fall_lat_local(:)
+    real(r8),allocatable :: Fall_sen_local(:)
+    real(r8),allocatable :: Fall_lwup_local(:)
+    real(r8),allocatable :: Fall_evap_local(:)
+    real(r8),allocatable :: Fall_swnet_local(:)
+    real(r8),allocatable :: Sl_ram1_local(:)
+
+    ! Local
+    real(r8) :: ubot, vbot
+    real(r8) :: swndf, swndr, swvdf, swvdr, sw
+    real(r8) :: fswndf, fswndr, fswvdf, fswvdr
+    real(r8) :: t_start, t_end, t_elapsed
+    
 
     character(len=*), parameter :: sub = 'cw_export_mct'
 
@@ -399,31 +456,191 @@ contains
 
     call MPI_Barrier(mpicom, ier)
 
+    ! Allocate global array for x2l variables
+    if (masterproc) then
+      allocate(Sa_vel(gsize))
+      allocate(Sa_u(gsize))
+      allocate(Sa_v(gsize))
+      allocate(Sa_shum(gsize))
+      allocate(Sa_tbot(gsize))
+      allocate(Faxa_swndr(gsize))
+      allocate(Faxa_swvdr(gsize))
+      allocate(Faxa_swndf(gsize))
+      allocate(Faxa_swvdf(gsize))
+      allocate(Faxa_swndr_cw(gsize))
+      allocate(Faxa_swvdr_cw(gsize))
+      allocate(Faxa_swndf_cw(gsize))
+      allocate(Faxa_swvdf_cw(gsize))
+      ! Global variables, received from CyberWater
+      allocate(Sl_t(gsize)) 
+      allocate(Sl_snowh(gsize))
+      allocate(Sl_albd(gsize))
+      allocate(Fall_lat(gsize))
+      allocate(Fall_sen(gsize))
+      allocate(Fall_lwup(gsize))
+      allocate(Fall_evap(gsize))
+      allocate(Fall_swnet(gsize))
+      allocate(Sl_ram1(gsize))
+    end if
 
-    allocate(lat_recv(lsize)) ! scattered local array after receiving from CyberWater
+    call MPI_GATHERV(x2l(index_x2l_Sa_u,:), lsize, MPI_DOUBLE, Sa_u, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier) ! Atm state m/s
+    call MPI_GATHERV(x2l(index_x2l_Sa_v,:), lsize, MPI_DOUBLE, Sa_v, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier) ! Atm state m/s
+    call MPI_GATHERV(x2l(index_x2l_Sa_shum,:), lsize, MPI_DOUBLE, Sa_shum, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(x2l(index_x2l_Sa_tbot,:), lsize, MPI_DOUBLE, Sa_tbot, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    ! Surface albedo
+    call MPI_GATHERV(x2l(index_x2l_Faxa_swndr,:), lsize, MPI_DOUBLE, Faxa_swndr, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(x2l(index_x2l_Faxa_swvdr,:), lsize, MPI_DOUBLE, Faxa_swvdr, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(x2l(index_x2l_Faxa_swndf,:), lsize, MPI_DOUBLE, Faxa_swndf, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(x2l(index_x2l_Faxa_swvdf,:), lsize, MPI_DOUBLE, Faxa_swvdf, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+
+    call MPI_Barrier(mpicom, ier)
+    
+
+!    allocate(lat_recv(lsize)) ! scattered local array after receiving from CyberWater
+    allocate(Sl_t_local(lsize))
+    allocate(Sl_snowh_local(lsize))
+    allocate(Faxa_swndr_cw_local(lsize))
+    allocate(Faxa_swvdr_cw_local(lsize))
+    allocate(Faxa_swndf_cw_local(lsize))
+    allocate(Faxa_swvdf_cw_local(lsize))
+    allocate(Sa_shum_local(lsize))
+    allocate(Sa_tbot_local(lsize))
+    allocate(Sa_vel_local(lsize))
+    allocate(Sa_u_local(lsize))
+    allocate(Sa_v_local(lsize))
+    allocate(Fall_lat_local(lsize))
+    allocate(Fall_sen_local(lsize))
+    allocate(Fall_lwup_local(lsize))
+    allocate(Fall_evap_local(lsize))
+    allocate(Fall_swnet_local(lsize))
+    allocate(Sl_ram1_local(lsize))
+
 
     if (masterproc) then
       write(iulog,*) "Receive data from server !"
       
-      receive_var_id = 4
-      allocate(arr_receive_lat(gsize))
-      call retrieve_variable_data(id, receive_var_id, arr_receive_lat, gsize)
+      ! ! Receive Latitude for testing, comment out
+!      receive_var_id = 4
+!      allocate(arr_receive_lat(gsize))
+!      call retrieve_variable_data(id, receive_var_id, arr_receive_lat, gsize)
 
       ! Scatter
-      call MPI_SCATTERV(arr_receive_lat, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-                    lat_recv, lsize, MPI_DOUBLE, 0, mpicom, ier)
+!      call MPI_SCATTERV(arr_receive_lat, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+!                    lat_recv, lsize, MPI_DOUBLE, 0, mpicom, ier)
 
       ! Clean up after scattering
-      deallocate(arr_receive_lat)
+!      deallocate(arr_receive_lat)
+
+      ! Receive data from server
+      t_start = MPI_WTIME()
+      call retrieve_variable_data(id, index_Sl_t, Sl_t, gsize)
+      call retrieve_variable_data(id, index_Sl_snowh, Sl_snowh, gsize)
+      call retrieve_variable_data(id, index_Sl_albd, Sl_albd, gsize)
+      call retrieve_variable_data(id, index_Fall_lat, Fall_lat, gsize)
+      call retrieve_variable_data(id, index_Fall_sen, Fall_sen, gsize)
+      call retrieve_variable_data(id, index_Fall_lwup, Fall_lwup, gsize)
+      call retrieve_variable_data(id, index_Fall_evap, Fall_evap, gsize)
+      call retrieve_variable_data(id, index_Fall_swnet, Fall_swnet, gsize)
+      call retrieve_variable_data(id, index_Sl_ram1, Sl_ram1, gsize)
+      t_end = MPI_WTIME()
+      t_elapsed = t_end - t_start
+      write(iulog,*) "Time used for receiving data from server: ", t_elapsed, " seconds"
+
+      ! Process the receive data on master proc
+      ! four albedo, zonal and meridional wind stress 
+      do i = 1, gsize
+        swndr      = Faxa_swndr(i)   ! forc_solldxy Atm flux  W/m^2
+        swvdr      = Faxa_swvdr(i)   ! forc_solsxy  Atm flux  W/m^2
+        swndf      = Faxa_swndf(i)   ! forc_solldxy Atm flux  W/m^2
+        swvdf      = Faxa_swvdf(i)   ! forc_solsdxy Atm flux  W/m^2
+        !sw         = swndr + swvdr + swndf + swvdf
+        !fswndr     = swndr / sw
+        !fswvdr     = swvdr / sw
+        !fswndf     = swndf / sw
+        !fswvdf     = swvdf / sw
+        Faxa_swndr_cw(i) = 0.25 * Sl_albd(i)  
+        Faxa_swvdr_cw(i) = 0.25 * Sl_albd(i)
+        Faxa_swndf_cw(i) = 0.25 * Sl_albd(i)
+        Faxa_swvdf_cw(i) = 0.25 * Sl_albd(i)
+
+        ubot       = Sa_u(i)         ! m/s
+        vbot       = Sa_v(i)         ! m/s
+        Sa_vel(i)  = sqrt(ubot*ubot + vbot*vbot)
+      end do
+
+      ! Scatter received data
+      call MPI_SCATTERV(Sl_t, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sl_t_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Sl_snowh, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sl_snowh_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Faxa_swndr_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Faxa_swndr_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Faxa_swvdr_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Faxa_swvdr_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Faxa_swndf_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Faxa_swndf_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Faxa_swvdf_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Faxa_swvdf_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Sa_shum, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sa_shum_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Sa_tbot, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sa_tbot_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Sa_vel, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sa_vel_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Sa_u, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sa_u_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Sa_v, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sa_v_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Fall_lat, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Fall_lat_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Fall_sen, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Fall_sen_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Fall_lwup, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Fall_lwup_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Fall_evap, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Fall_evap_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Fall_swnet, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Fall_swnet_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(Sl_ram1, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    Sl_ram1_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
 
     end if
     call MPI_Barrier(mpicom, ier)
 
-    write(6,*) "Checking MPI scatter!"
-    write(6,*) "ldomain%lonc", ldomain%latc
-    write(6,*) "lat_recv", lat_recv
+!    write(6,*) "Checking MPI scatter!"
+!    write(6,*) "ldomain%lonc", ldomain%latc
+!    write(6,*) "lat_recv", lat_recv
 
-    deallocate(lat_recv)
+
+    ! Update lnd2atm_vars using CyberWater data
+    do g = bounds%begg,bounds%endg
+       i = 1 + (g-bounds%begg)
+       lnd2atm_vars%t_rad_grc(g)    = Sl_t_local(g)
+       lnd2atm_vars%h2osno_grc(g)   = Sl_snowh_local(g)
+       lnd2atm_vars%albd_grc(g,1)   = Faxa_swvdr_cw_local(g) ! Direct albedo (visible radiation)
+       lnd2atm_vars%albd_grc(g,2)   = Faxa_swndr_cw_local(g) ! Direct albedo (near-infrared radiation)
+       lnd2atm_vars%albi_grc(g,1)   = Faxa_swvdf_cw_local(g) ! Diffuse albedo (visible radiation)
+       lnd2atm_vars%albi_grc(g,2)   = Faxa_swndf_cw_local(g) ! Diffuse albedo (near-infrared radiation)
+       lnd2atm_vars%t_ref2m_grc(g)  = Sa_tbot_local(g)
+       lnd2atm_vars%q_ref2m_grc(g)  = Sa_shum_local(g)
+       lnd2atm_vars%u_ref10m_grc(g) = Sa_vel_local(g)
+       lnd2atm_vars%u_ref10m_with_gusts_grc(g) = Sa_vel_local(g) ! need to revisit wind gust
+       lnd2atm_vars%taux_grc(g)     = (-1) * atm2lnd_vars%forc_rho_not_downscaled_grc(g) * Sa_u_local(g) / Sl_ram1_local(g)
+       lnd2atm_vars%tauy_grc(g)     = (-1) * atm2lnd_vars%forc_rho_not_downscaled_grc(g) * Sa_v_local(g) / Sl_ram1_local(g)
+       lnd2atm_vars%eflx_lh_tot_grc(g)    = Fall_lat_local(g)
+       lnd2atm_vars%eflx_sh_tot_grc(g)    = Fall_sen_local(g)
+       lnd2atm_vars%eflx_lwrad_out_grc(g) = Fall_lwup_local(g)
+       lnd2atm_vars%qflx_evap_tot_grc(g)  = Fall_evap_local(g)
+       lnd2atm_vars%fsa_grc(g)            = Fall_swnet_local(g)
+    end do
        
 !    l2x(:,:) = 0.0_r8
 
@@ -447,11 +664,53 @@ contains
 !       l2x(index_l2x_Fall_swnet,i)  =  lnd2atm_vars%fsa_grc(g)
 !    end do
 
+!    deallocate(lat_recv)
+    deallocate(Sl_t_local)
+    deallocate(Sl_snowh_local)
+    deallocate(Faxa_swndr_cw_local)
+    deallocate(Faxa_swvdr_cw_local)
+    deallocate(Faxa_swndf_cw_local)
+    deallocate(Faxa_swvdf_cw_local)
+    deallocate(Sa_shum_local)
+    deallocate(Sa_tbot_local)
+    deallocate(Sa_vel_local)
+    deallocate(Sa_u_local)
+    deallocate(Sa_v_local)
+    deallocate(Fall_lat_local)
+    deallocate(Fall_sen_local)
+    deallocate(Fall_lwup_local)
+    deallocate(Fall_evap_local)
+    deallocate(Fall_swnet_local)
+    deallocate(Sl_ram1_local)
+
     ! Clean up allocated resources
     if (masterproc) then
       deallocate(nCellsPerProc)
       deallocate(nCellsDisplacement)
       deallocate(indexToCellIDGathered)
+      deallocate(Sa_vel)
+      deallocate(Sa_u)
+      deallocate(Sa_v)
+      deallocate(Sa_shum)
+      deallocate(Sa_tbot)
+      deallocate(Faxa_swndr)
+      deallocate(Faxa_swvdr)
+      deallocate(Faxa_swndf)
+      deallocate(Faxa_swvdf)
+      deallocate(Faxa_swndr_cw)
+      deallocate(Faxa_swvdr_cw)
+      deallocate(Faxa_swndf_cw)
+      deallocate(Faxa_swvdf_cw)
+      ! Global variables, received from CyberWater
+      deallocate(Sl_t)
+      deallocate(Sl_snowh)
+      deallocate(Sl_albd)
+      deallocate(Fall_lat)
+      deallocate(Fall_sen)
+      deallocate(Fall_lwup)
+      deallocate(Fall_evap)
+      deallocate(Fall_swnet)
+      deallocate(Sl_ram1)
     end if
 
   end subroutine cw_export_mct
@@ -480,6 +739,7 @@ contains
 
     ! Check data availability with retries
     if (check_data_availability_with_retries(var_id, recv_retry_count, recv_retry_time) == 1) then
+
       ! Retrieve the variable size
       receive_var_size = retrieve_variable_size(session_id, var_id)
       print *, "Variable size for ID", var_id, "is", receive_var_size
@@ -498,8 +758,8 @@ contains
       endif
 
       ! Sleep for a defined period
-      print *, "------ Sleeping for 1 seconds ------"
-      call sleep(1)
+!      print *, "------ Sleeping for 1 seconds ------"
+!      call sleep(1)
 
     else
       ! Handle the case where data is not available after retries

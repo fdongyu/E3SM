@@ -50,3 +50,6 @@ if (CONVERT_TO_MAKE)
     endif()
   endforeach()
 endif()
+
+string(APPEND SLIBS " -lcurl ")
+string(APPEND SLIBS " -lpthread")
