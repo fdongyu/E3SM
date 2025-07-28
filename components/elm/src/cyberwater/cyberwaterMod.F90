@@ -147,6 +147,8 @@ contains
         print *, "Current status of session: ", session_status
       endif 
 
+      call stream_updates()
+
     end if
 
     call MPI_Barrier(mpicom, ier)
@@ -248,11 +250,14 @@ contains
     !
     ! !LOCAL VARIABLES
     character(len=32), parameter    :: sub = "cyberwater_final"
+    integer :: result
 
     sd%initiator_id = 35
 
     if (masterproc) then
       write(iulog,*) 'Finishing CyberWater'
+
+      result = join_sse_thread_f()
       write(iulog,*) 'End session'
       call end_session_now(sd%initiator_id)
     end if

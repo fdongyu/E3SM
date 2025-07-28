@@ -28,12 +28,14 @@ module cw_import_export
   ! Sending Params
   integer :: send_retry_time  = 10
   integer  :: send_retry_count = 25
-  real(r8) :: recv_delay       = 5.0_r8
+  !real(r8) :: recv_delay       = 5.0_r8
+  real(r8) :: recv_delay       = 0.0_r8
 
   ! Receiving Params
   integer :: recv_retry_time  = 10
   integer  :: recv_retry_count = 25
-  logical  :: use_delay = .true.
+  !logical  :: use_delay = .true.
+  logical  :: use_delay = .false.
 
 
 contains
