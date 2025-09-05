@@ -12,6 +12,7 @@ module lnd_comp_mct
   use mct_mod          , only : mct_avect, mct_gsmap
   use decompmod        , only : bounds_type, ldecomp
   use lnd_import_export
+  use cyberwaterMod    , only : cyberwater_init, cyberwater_run, cyberwater_final
   use iso_c_binding
   use elm_cpl_indices
   use esmf, only: ESMF_clock
@@ -91,7 +92,7 @@ contains
     use seq_comm_mct     , only : seq_comm_suffix, seq_comm_inst, seq_comm_name
     use seq_flds_mod     , only : seq_flds_x2l_fields, seq_flds_l2x_fields, lnd_rof_two_way
     use spmdMod          , only : masterproc, npes, spmd_init
-    use elm_varctl       , only : nsrStartup, nsrContinue, nsrBranch, use_lnd_rof_two_way
+    use elm_varctl       , only : nsrStartup, nsrContinue, nsrBranch, use_lnd_rof_two_way, use_cyberwater
     use elm_cpl_indices  , only : elm_cpl_indices_set
     use perf_mod         , only : t_startf, t_stopf
     use mct_mod
@@ -288,6 +289,10 @@ contains
 
     call initialize1( )
 
+    if (use_cyberwater) then
+      call cyberwater_init()
+    end if
+
     ! If no land then exit out of initialization
 
     if ( noland ) then
@@ -428,7 +433,7 @@ contains
     use elm_time_manager,  only : advance_timestep, set_nextsw_cday,update_rad_dtime
     use decompMod       ,  only : get_proc_bounds
     use abortutils      ,  only : endrun
-    use elm_varctl      ,  only : iulog
+    use elm_varctl      ,  only : iulog, use_cyberwater
     use elm_varorb      ,  only : eccen, obliqr, lambm0, mvelpp
     use shr_file_mod    ,  only : shr_file_setLogUnit, shr_file_setLogLevel
     use shr_file_mod    ,  only : shr_file_getLogUnit, shr_file_getLogLevel
@@ -615,7 +620,15 @@ contains
        call shr_orb_decl( calday     , eccen, mvelpp, lambm0, obliqr, declin  , eccf )
        call shr_orb_decl( nextsw_cday, eccen, mvelpp, lambm0, obliqr, declinp1, eccf )
        call t_stopf ('shr_orb_decl')
-       call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+!       call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+
+       ! Run CyberWater
+       if (use_cyberwater) then
+         call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
+       else
+         call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+       end if
+
        call t_stopf ('elm_run')
 
        ! Create l2x_l export state - add river runoff input to l2x_l if appropriate
@@ -653,6 +666,11 @@ contains
 
     call shr_file_setLogUnit (shrlogunit)
     call shr_file_setLogLevel(shrloglev)
+
+    ! Run CyberWater
+!    if (use_cyberwater) then
+!      call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
+!    end if
   
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -676,6 +694,7 @@ contains
     use seq_cdata_mod   ,only : seq_cdata, seq_cdata_setptrs
     use seq_timemgr_mod ,only : seq_timemgr_EClockGetData, seq_timemgr_StopAlarmIsOn
     use seq_timemgr_mod ,only : seq_timemgr_RestartAlarmIsOn, seq_timemgr_EClockDateInSync
+    use elm_varctl      ,only : use_cyberwater
     use mct_mod
     use esmf
     use elm_finalizeMod, only : final
@@ -694,6 +713,11 @@ contains
       deallocate (x2l_lm)
 #endif
     call final()
+
+    ! Run CyberWater
+    if (use_cyberwater) then
+      call cyberwater_final()
+    end if
 
   end subroutine lnd_final_mct
 
