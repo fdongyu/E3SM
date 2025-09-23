@@ -15,6 +15,8 @@ module cw_cpl_indices
   ! !PUBLIC MEMBER FUNCTIONS:
   !public :: elm_cpl_indices_set        ! Set the coupler indices
   !
+  public :: subdomain_ind
+  integer, allocatable :: subdomain_ind(:)
 
   ! atm -> lnd (1~100)
   integer, public :: index_a2l_latitude  = 1

@@ -289,9 +289,9 @@ contains
 
     call initialize1( )
 
-    if (use_cyberwater) then
-      call cyberwater_init()
-    end if
+!    if (use_cyberwater) then
+!      call cyberwater_init(bounds)
+!    end if
 
     ! If no land then exit out of initialization
 
@@ -415,6 +415,10 @@ contains
          call endrun('Error: fail to write the land mesh file')
     endif
 #endif
+
+    if (use_cyberwater) then
+      call cyberwater_init(bounds)
+    end if
 
   end subroutine lnd_init_mct
 
@@ -620,13 +624,13 @@ contains
        call shr_orb_decl( calday     , eccen, mvelpp, lambm0, obliqr, declin  , eccf )
        call shr_orb_decl( nextsw_cday, eccen, mvelpp, lambm0, obliqr, declinp1, eccf )
        call t_stopf ('shr_orb_decl')
-!       call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+       call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
 
        ! Run CyberWater
        if (use_cyberwater) then
          call cyberwater_run(EClock, bounds, cdata_l, x2l_l, l2x_l)
-       else
-         call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
+!       else
+!         call elm_drv(doalb, nextsw_cday, declinp1, declin, rstwr, nlend, rdate)
        end if
 
        call t_stopf ('elm_run')
