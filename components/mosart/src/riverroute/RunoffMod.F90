@@ -95,6 +95,7 @@ module RunoffMod
      real(r8), pointer :: wr(:,:)          ! MOSART main channel water storage (m3)
      real(r8), pointer :: mr(:,:)          ! MOSART channel area
      real(r8), pointer :: yr(:,:)          ! MOSART channel water depth
+     real(r8), pointer :: vr(:,:)          ! MOSART channel water velocity
      real(r8), pointer :: pr(:,:)          ! MOSART channel wetted p
      real(r8), pointer :: rr(:,:)          ! MOSART channel hydraulic r
      real(r8), pointer :: erout(:,:)       ! MOSART flow out of the main channel, instantaneous (m3/s) (negative is out)
@@ -177,6 +178,7 @@ module RunoffMod
 
      real(r8), pointer :: ssh(:)
      real(r8), pointer :: yr_nt1(:)
+     real(r8), pointer :: vr_nt1(:)
      
   end type runoff_flow
 
@@ -620,6 +622,7 @@ contains
              rtmCTL%wr(begr:endr,nt_rtm),         &
              rtmCTL%mr(begr:endr,nt_rtm),         &
              rtmCTL%yr(begr:endr,nt_rtm),         &
+             rtmCTL%vr(begr:endr,nt_rtm),         &
              rtmCTL%pr(begr:endr,nt_rtm),         &
              rtmCTL%rr(begr:endr,nt_rtm),         &
              rtmCTL%erout(begr:endr,nt_rtm),      &
@@ -629,6 +632,7 @@ contains
              rtmCTL%qdto(begr:endr,nt_rtm),       &
              rtmCTL%qdem(begr:endr,nt_rtm),       & 
              rtmCTL%yr_nt1(begr:endr),            &
+             rtmCTL%vr_nt1(begr:endr),            &
              rtmCTL%ssh(begr:endr),               &
              stat=ier)
     if (ier /= 0) then

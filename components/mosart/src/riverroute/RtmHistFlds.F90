@@ -162,6 +162,11 @@ contains
            avgflag='A', long_name='MOSART main channel water depth:'//trim(rtm_tracers(1)), &
            ptr_rof=rtmCTL%yr_nt1, default='active')
 
+    call RtmHistAddfld(fname='Main_Channel_Water_Velocity'//'_'//trim(rtm_tracers(1)), units='m/s',  &
+           avgflag='A', long_name='MOSART main channel water velocity:'//trim(rtm_tracers(1)), &
+           ptr_rof=rtmCTL%vr_nt1, default='active')
+
+
     if (sediflag) then
        call RtmHistAddfld (fname='RIVER_DISCHARGE_OVER_LAND'//'_'//trim(rtm_tracers(3)), units='kg/s',  &
             avgflag='A', long_name='MOSART river basin flow: '//trim(rtm_tracers(3)), &
@@ -320,6 +325,7 @@ contains
     rtmCTL%qdem_nt2(:)       = rtmCTL%qdem(:,2)
   
     rtmCTL%yr_nt1(:)         = rtmCTL%yr(:,1)  ! water depth
+    rtmCTL%vr_nt1(:)         = rtmCTL%vr(:,1)  ! water velocity
 
     if(sediflag) then
         rtmCTL%runofflnd_nt3(:)  = rtmCTL%runofflnd(:,3)

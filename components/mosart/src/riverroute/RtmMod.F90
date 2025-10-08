@@ -2773,6 +2773,7 @@ contains
     rtmCTL%mr      = TRunoff%mr
     rtmCTL%pr      = TRunoff%pr
     rtmCTL%yr      = TRunoff%yr
+    rtmCTL%vr      = TRunoff%vr
     rtmCTL%rr      = TRunoff%rr
     rtmCTL%erout   = TRunoff%erout
 
