@@ -60,6 +60,10 @@ contains
                ! mineral N loss due to leaching and runoff
                col_ns%smin_no3_vr(c,j) = max( col_ns%smin_no3_vr(c,j) - &
                     ( col_nf%smin_no3_leached_vr(c,j) + col_nf%smin_no3_runoff_vr(c,j) ) * dt, 0._r8)
+
+               ! NEW
+               !col_ns%smin_nh4_vr(c,j) = max( col_ns%smin_nh4_vr(c,j) - &
+               !     ( col_nf%smin_nh4_leached_elm_vr(c,j) + col_nf%smin_nh4_runoff_elm_vr(c,j) ) * dt, 0._r8)
                
                col_ns%sminn_vr(c,j) = col_ns%smin_no3_vr(c,j) + col_ns%smin_nh4_vr(c,j)
                if (use_pflotran .and. pf_cmode) then 

@@ -283,6 +283,7 @@ contains
     integer  :: nlevbed				       ! number of layers to bedrock
     real(r8) :: sf_no3                                 ! soluble fraction of NO3 (unitless)
     real(r8) :: disn_conc                              ! dissolved mineral N concentration (gN/kg water)
+    real(r8) :: disn_conc2                             ! dissolved mineral NH4 concentration (gN/kg water) NEW
     real(r8) :: tot_water(bounds%begc:bounds%endc)     ! total column liquid water (kg water/m2)
     real(r8) :: surface_water(bounds%begc:bounds%endc) ! liquid water to shallow surface depth (kg water/m2)
     real(r8) :: drain_tot(bounds%begc:bounds%endc)     ! total drainage flux (mm H2O /s)
@@ -296,7 +297,10 @@ contains
          qflx_surf           => col_wf%qflx_surf              , & ! Input:  [real(r8) (:)   ]  surface runoff (mm H2O /s)                        
          smin_no3_vr         => col_ns%smin_no3_vr        , & ! Input:  [real(r8) (:,:) ]                                                  
          smin_no3_leached_vr => col_nf%smin_no3_leached_vr , & ! Output: [real(r8) (:,:) ]  rate of mineral NO3 leaching (gN/m3/s)          
-         smin_no3_runoff_vr  => col_nf%smin_no3_runoff_vr    & ! Output: [real(r8) (:,:) ]  rate of mineral NO3 loss with runoff (gN/m3/s)  
+         smin_no3_runoff_vr  => col_nf%smin_no3_runoff_vr    , & ! Output: [real(r8) (:,:) ]  rate of mineral NO3 loss with runoff (gN/m3/s)  
+         smin_nh4_vr         => col_ns%smin_nh4_vr        , & ! Input: [real(r8) (:,:) ]  NEW 
+         smin_nh4_leached_elm_vr => col_nf%smin_nh4_leached_elm_vr , & ! Output: [real(r8) (:,:) ]  rate of mineral NH4 leaching (gN/m3/s)         NEW
+         smin_nh4_runoff_elm_vr  => col_nf%smin_nh4_runoff_elm_vr    & ! Output: [real(r8) (:,:) ]  rate of mineral NH4 loss with runoff (gN/m3/s)
          )
 
 
@@ -342,49 +346,65 @@ contains
                ! calculate the dissolved mineral N concentration (gN/kg water)
                ! assumes that 10% of mineral nitrogen is soluble
                disn_conc = 0._r8
+               disn_conc2 = 0._r8 ! NEW
                if (tot_water(c) > 0._r8) then
                   disn_conc = (sf_no3 * smin_no3_vr(c,j) )/tot_water(c)
+                  disn_conc2 = (1 * smin_nh4_vr(c,j) )/tot_water(c) ! NEW
                end if
 
                ! calculate the N leaching flux as a function of the dissolved
                ! concentration and the sub-surface drainage flux
                smin_no3_leached_vr(c,j) = disn_conc * drain_tot(c)
+               smin_nh4_leached_elm_vr(c,j) = disn_conc2 * drain_tot(c) ! NEW
             else
                ! calculate the dissolved mineral N concentration (gN/kg water)
                ! assumes that 10% of mineral nitrogen is soluble
                disn_conc = 0._r8
+               disn_conc2 = 0._r8 ! NEW 
                if (h2osoi_liq(c,j) > 0._r8) then
                   disn_conc = (sf_no3 * smin_no3_vr(c,j) * col_pp%dz(c,j) )/(h2osoi_liq(c,j) )
+                  disn_conc2 = (1 * smin_nh4_vr(c,j) * col_pp%dz(c,j) )/(h2osoi_liq(c,j) ) ! NEW
                end if
                !
                ! calculate the N leaching flux as a function of the dissolved
                ! concentration and the sub-surface drainage flux
                smin_no3_leached_vr(c,j) = disn_conc * drain_tot(c) * h2osoi_liq(c,j) / ( tot_water(c) * col_pp%dz(c,j) )
+               smin_nh4_leached_elm_vr(c,j) = disn_conc2 * drain_tot(c) * h2osoi_liq(c,j) / ( tot_water(c) * col_pp%dz(c,j) ) ! NEW
                !
                ! ensure that leaching rate isn't larger than soil N pool
                smin_no3_leached_vr(c,j) = min(smin_no3_leached_vr(c,j), smin_no3_vr(c,j) / dt )
+               smin_nh4_leached_elm_vr(c,j) = min(smin_nh4_leached_elm_vr(c,j), smin_nh4_vr(c,j) / dt ) ! NEW
                !
                ! limit the leaching flux to a positive value
                smin_no3_leached_vr(c,j) = max(smin_no3_leached_vr(c,j), 0._r8)
+               smin_nh4_leached_elm_vr(c,j) = max(smin_nh4_leached_elm_vr(c,j), 0._r8) ! NEW
                !
                !
                ! calculate the N loss from surface runoff, assuming a shallow mixing of surface waters into soil and removal based on runoff
                if ( zisoi(j) <= depth_runoff_Nloss )  then
                   smin_no3_runoff_vr(c,j) = disn_conc * qflx_surf(c) * &
                        h2osoi_liq(c,j) / ( surface_water(c) * col_pp%dz(c,j) )
+                  smin_nh4_runoff_elm_vr(c,j) = disn_conc2 * qflx_surf(c) * &
+                       h2osoi_liq(c,j) / ( surface_water(c) * col_pp%dz(c,j) ) ! NEW
                elseif ( zisoi(j-1) < depth_runoff_Nloss )  then
                   smin_no3_runoff_vr(c,j) = disn_conc * qflx_surf(c) * &
                        h2osoi_liq(c,j) * ((depth_runoff_Nloss - zisoi(j-1)) / &
                        col_pp%dz(c,j)) / ( surface_water(c) * (depth_runoff_Nloss-zisoi(j-1) ))
+                  smin_nh4_runoff_elm_vr(c,j) = disn_conc2 * qflx_surf(c) * &
+                       h2osoi_liq(c,j) * ((depth_runoff_Nloss - zisoi(j-1)) / &
+                       col_pp%dz(c,j)) / ( surface_water(c) * (depth_runoff_Nloss-zisoi(j-1) )) ! NEW
                else
                   smin_no3_runoff_vr(c,j) = 0._r8
+                  smin_nh4_runoff_elm_vr(c,j) = 0._r8 ! NEW
                endif
                !
                ! ensure that runoff rate isn't larger than soil N pool
                smin_no3_runoff_vr(c,j) = min(smin_no3_runoff_vr(c,j), smin_no3_vr(c,j) / dt - smin_no3_leached_vr(c,j))
+               smin_nh4_runoff_elm_vr(c,j) = min(smin_nh4_runoff_elm_vr(c,j), smin_nh4_vr(c,j) / dt - smin_nh4_leached_elm_vr(c,j)) ! NEW
                !
                ! limit the flux to a positive value
                smin_no3_runoff_vr(c,j) = max(smin_no3_runoff_vr(c,j), 0._r8)
+               smin_nh4_runoff_elm_vr(c,j) = max(smin_nh4_runoff_elm_vr(c,j), 0._r8) ! NEW
 
 
             endif
@@ -392,9 +412,11 @@ contains
             ! only let at most the assumed soluble fraction
             ! of smin_no3 be leached on any given timestep
             smin_no3_leached_vr(c,j) = min(smin_no3_leached_vr(c,j), (sf_no3 * smin_no3_vr(c,j))/dt)
+            smin_nh4_leached_elm_vr(c,j) = min(smin_nh4_leached_elm_vr(c,j), (1 * smin_nh4_vr(c,j))/dt) ! NEW
 
             ! limit the flux to a positive value
             smin_no3_leached_vr(c,j) = max(smin_no3_leached_vr(c,j), 0._r8)
+            smin_nh4_leached_elm_vr(c,j) = max(smin_nh4_leached_elm_vr(c,j), 0._r8) ! NEW
 
          end do
       end do

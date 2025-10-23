@@ -783,6 +783,10 @@ module ColumnDataType
     real(r8), pointer :: smin_no3_runoff_vr                    (:,:)   => null() ! vertically-resolved rate of mineral NO3 loss with runoff (gN/m3/s)
     real(r8), pointer :: smin_no3_runoff                       (:)     => null() ! soil mineral NO3 pool loss to runoff (gN/m2/s)
     real(r8), pointer :: smin_nh4_runoff                       (:)     => null() 
+    real(r8), pointer :: smin_nh4_leached_elm_vr               (:,:)   => null() ! NEW
+    real(r8), pointer :: smin_nh4_leached_elm                  (:)     => null()
+    real(r8), pointer :: smin_nh4_runoff_elm_vr                (:,:)   => null()
+    real(r8), pointer :: smin_nh4_runoff_elm                   (:)     => null()
     real(r8), pointer :: nh3_soi_flx                           (:)     => null()
     ! nitrification /denitrification diagnostic quantities
     real(r8), pointer :: smin_no3_massdens_vr                  (:,:)   => null() ! (ugN / g soil) soil nitrate concentration
@@ -8242,6 +8246,10 @@ contains
     allocate(this%smin_no3_runoff                 (begc:endc))                   ; this%smin_no3_runoff                (:)   = spval
     allocate(this%nh3_soi_flx                     (begc:endc))                   ; this%nh3_soi_flx                     (:)  = spval
     allocate(this%smin_nh4_runoff                 (begc:endc))                   ; this%smin_nh4_runoff                (:)   = spval
+    allocate(this%smin_nh4_leached_elm_vr         (begc:endc,1:nlevdecomp_full)) ; this%smin_nh4_leached_elm_vr        (:,:) = spval ! NEW
+    allocate(this%smin_nh4_runoff_elm_vr          (begc:endc,1:nlevdecomp_full)) ; this%smin_nh4_runoff_elm_vr         (:,:) = spval
+    allocate(this%smin_nh4_leached_elm            (begc:endc))                   ; this%smin_nh4_leached_elm           (:)   = spval
+    allocate(this%smin_nh4_runoff_elm             (begc:endc))                   ; this%smin_nh4_runoff_elm            (:)   = spval
     allocate(this%pot_f_nit_vr                    (begc:endc,1:nlevdecomp_full)) ; this%pot_f_nit_vr                   (:,:) = spval
     allocate(this%pot_f_nit                       (begc:endc))                   ; this%pot_f_nit                      (:)   = spval
     allocate(this%pot_f_denit_vr                  (begc:endc,1:nlevdecomp_full)) ; this%pot_f_denit_vr                 (:,:) = spval
@@ -8647,6 +8655,16 @@ contains
          avgflag='A', long_name='soil NO3 pool loss to runoff', &
          ptr_col=this%smin_no3_runoff)
 
+    ! NEW
+    this%smin_nh4_leached_elm(begc:endc) = spval
+    call hist_addfld1d (fname='SMIN_NH4_LEACHED', units='gN/m^2/s', &
+         avgflag='A', long_name='soil NH4 pool loss to leaching', &
+         ptr_col=this%smin_nh4_leached_elm)
+
+    this%smin_nh4_runoff_elm(begc:endc) = spval
+    call hist_addfld1d (fname='SMIN_NH4_RUNOFF', units='gN/m^2/s', &
+         avgflag='A', long_name='soil NH4 pool loss to runoff', &
+         ptr_col=this%smin_nh4_runoff_elm)
 
     if ((nlevdecomp_full > 1) .or. (use_pflotran .and. pf_cmode)) then
        this%f_nit_vr(begc:endc,:) = spval
@@ -9422,6 +9440,8 @@ contains
        this%f_n2o_nit(i)              = value_column
        this%smin_no3_leached(i)       = value_column
        this%smin_no3_runoff(i)        = value_column
+       this%smin_nh4_leached_elm(i)   = value_column  ! NEW
+       this%smin_nh4_runoff_elm(i)    = value_column
 
        this%f_ngas_decomp(i)         = value_column
        this%f_ngas_nitri(i)          = value_column
@@ -9703,6 +9723,16 @@ contains
              this%smin_no3_runoff(c) = &
                   this%smin_no3_runoff(c) + &
                   this%smin_no3_runoff_vr(c,j) * dzsoi_decomp(j)
+
+             ! NEW
+             this%smin_nh4_leached_elm(c) = &
+                  this%smin_nh4_leached_elm(c) + &
+                  this%smin_nh4_leached_elm_vr(c,j) * dzsoi_decomp(j)
+
+             this%smin_nh4_runoff_elm(c) = &
+                  this%smin_nh4_runoff_elm(c) + &
+                  this%smin_nh4_runoff_elm_vr(c,j) * dzsoi_decomp(j)
+
           end do
        end do
        do fc = 1,num_soilc
