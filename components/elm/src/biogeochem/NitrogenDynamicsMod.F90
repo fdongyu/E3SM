@@ -337,6 +337,7 @@ contains
          drain_tot(c) = qflx_drain(c)
       end do
 
+
       do j = 1,nlevdecomp
          ! Loop through columns
          do fc = 1,num_soilc

@@ -372,6 +372,8 @@ contains
          sminn_leached             =>    col_nf%sminn_leached             , & ! Input:  [real(r8) (:)]  soil mineral N pool loss to leaching (gN/m2/s)
          smin_no3_leached          =>    col_nf%smin_no3_leached          , & ! Input:  [real(r8) (:)]  soil mineral NO3 pool loss to leaching (gN/m2/s)
          smin_no3_runoff           =>    col_nf%smin_no3_runoff           , & ! Input:  [real(r8) (:)]  soil mineral NO3 pool loss to runoff (gN/m2/s)
+         smin_nh4_leached_elm      =>    col_nf%smin_nh4_leached_elm      , & ! Input:  [real(r8) (:)]  soil mineral NH4 pool loss to leaching (gN/m2/s) NEW
+         smin_nh4_runoff_elm       =>    col_nf%smin_nh4_runoff_elm       , & ! Input:  [real(r8) (:)]  soil mineral NH4 pool loss to runoff (gN/m2/s) NEW
          f_n2o_nit                 =>    col_nf%f_n2o_nit                 , & ! Input:  [real(r8) (:)]  flux of N2o from nitrification [gN/m^2/s]
          plant_to_litter_nflux     =>    col_nf%plant_to_litter_nflux     , & ! Input                   flux of N from FATES litter into ELM
                                                                               !                         litter (gP/m2/s)
@@ -462,7 +464,7 @@ contains
          if (is_active_betr_bgc)then
             col_noutputs(c) = col_noutputs(c) + f_n2o_nit(c)
 
-            col_noutputs(c) = col_noutputs(c) + smin_no3_leached(c) + smin_no3_runoff(c)
+            col_noutputs(c) = col_noutputs(c) + smin_no3_leached(c) + smin_no3_runoff(c) + smin_nh4_leached_elm(c) + smin_nh4_runoff_elm(c) ! NEW
          else
 
             col_noutputs(c) = col_noutputs(c) + f_n2o_nit(c)
@@ -471,7 +473,7 @@ contains
                ! inclusion of aq. NH4 transport by PFLOTRAN-bgc
                col_noutputs(c) = col_noutputs(c) + sminn_leached(c)
             else
-               col_noutputs(c) = col_noutputs(c) + smin_no3_leached(c) + smin_no3_runoff(c)
+               col_noutputs(c) = col_noutputs(c) + smin_no3_leached(c) + smin_no3_runoff(c) + smin_nh4_leached_elm(c) + smin_nh4_runoff_elm(c) ! NEW
             endif
             
 
@@ -522,6 +524,8 @@ contains
          write(iulog,*)'n2onit                = ',f_n2o_nit(c)*dt
          write(iulog,*)'no3 leach             = ',smin_no3_leached(c)*dt
          write(iulog,*)'no3 runof             = ',smin_no3_runoff(c)*dt
+         write(iulog,*)'nh4 leach             = ',smin_nh4_leached_elm(c)*dt ! NEW
+         write(iulog,*)'nh4 runof             = ',smin_nh4_runoff_elm(c)*dt
          write(iulog,*)'ndep                  = ',ndep_to_sminn(c)*dt
          write(iulog,*)'nfix                  = ',nfix_to_sminn(c)*dt
          write(iulog,*)'nsup                  = ',supplement_to_sminn(c)*dt
