@@ -3874,7 +3874,7 @@ contains
 
               ! If Channel area >= unit area * 0.7 (note: 0.7 may be changed) :
               if ( TUnit%rwidth(n) * TUnit%rlen(n) .ge. TUnit%area(n) * 0.7_r8 ) then
-                 TUnit%rwidth(n) = TUnit%area(n) * 0.7_r8 / TUnit%rlen(n)
+                 TUnit%rwidth(n) = TUnit%area(n) * 0.69_r8 / TUnit%rlen(n)
               endif
 
            end if
