@@ -257,6 +257,11 @@ module elm_varctl
   !$acc declare create(use_hydrstress)
   !$acc declare create(use_lai_streams)
   !----------------------------------------------------------
+  ! cyberwater switch
+  !----------------------------------------------------------
+
+  logical, public :: use_cyberwater = .false. ! true => use hydrological models from CyberWater
+  !----------------------------------------------------------
   ! dynamic root switch
   !----------------------------------------------------------
 

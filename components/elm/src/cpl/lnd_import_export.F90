@@ -1397,6 +1397,28 @@ contains
        l2x(index_l2x_Fall_lwup,i)   = -lnd2atm_vars%eflx_lwrad_out_grc(g)
        l2x(index_l2x_Fall_evap,i)   = -lnd2atm_vars%qflx_evap_tot_grc(g)
        l2x(index_l2x_Fall_swnet,i)  =  lnd2atm_vars%fsa_grc(g)
+
+       ! For comparison with the variables received from the data exchange server
+!       write(iulog,*) "g =", g, ", i =", i
+!       write(iulog,*) "Sl_t:              ", lnd2atm_vars%t_rad_grc(g)
+!       write(iulog,*) "Sl_snowh:          ", lnd2atm_vars%h2osno_grc(g)
+!       write(iulog,*) "Sl_avsdr:          ", lnd2atm_vars%albd_grc(g,1)
+!       write(iulog,*) "Sl_anidr:          ", lnd2atm_vars%albd_grc(g,2)
+!       write(iulog,*) "Sl_avsdf:          ", lnd2atm_vars%albi_grc(g,1)
+!       write(iulog,*) "Sl_anidf:          ", lnd2atm_vars%albi_grc(g,2)
+!       write(iulog,*) "Sl_tref:           ", lnd2atm_vars%t_ref2m_grc(g)
+!       write(iulog,*) "Sl_qref:           ", lnd2atm_vars%q_ref2m_grc(g)
+!       write(iulog,*) "Sl_u10:            ", lnd2atm_vars%u_ref10m_grc(g)
+!       write(iulog,*) "Sl_u10withgusts:   ", lnd2atm_vars%u_ref10m_with_gusts_grc(g)
+!       write(iulog,*) "Fall_taux:         ", -lnd2atm_vars%taux_grc(g)
+!       write(iulog,*) "Fall_tauy:         ", -lnd2atm_vars%tauy_grc(g)
+!       write(iulog,*) "Fall_lat:          ", -lnd2atm_vars%eflx_lh_tot_grc(g)
+!       write(iulog,*) "Fall_sen:          ", -lnd2atm_vars%eflx_sh_tot_grc(g)
+!       write(iulog,*) "Fall_lwup:         ", -lnd2atm_vars%eflx_lwrad_out_grc(g)
+!       write(iulog,*) "Fall_evap:         ", -lnd2atm_vars%qflx_evap_tot_grc(g)
+!       write(iulog,*) "Fall_swnet:        ", lnd2atm_vars%fsa_grc(g)
+!       write(iulog,*) "-------------------------------------"
+
        if (index_l2x_Fall_fco2_lnd /= 0) then
           l2x(index_l2x_Fall_fco2_lnd,i) = -lnd2atm_vars%nee_grc(g)  
        end if
