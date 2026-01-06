@@ -381,8 +381,6 @@ contains
     ! Global, variables read from x2l
     real(r8),allocatable :: Sa_u(:)    ! zonal wind velocity
     real(r8),allocatable :: Sa_v(:)    ! meridional wind velocity
-    real(r8),allocatable :: Sa_shum(:) ! bottom atm level spec hum Pa
-    real(r8),allocatable :: Sa_tbot(:) ! bottom atm level temp     degree
     real(r8),allocatable :: Faxa_swndr(:) ! direct near-infrared incident solar radiation W m-2
     real(r8),allocatable :: Faxa_swvdr(:) ! direct visible indicent solar radiation W m-2
     real(r8),allocatable :: Faxa_swndf(:) ! diffuse near-infrared incident solar radiation W m-2
@@ -400,30 +398,10 @@ contains
     real(r8),allocatable :: Sl_ram1_recv(:)   ! Aerodynamic resistance  s/m
 
     ! Derived, variables
-    real(r8),allocatable :: Sa_vel(:)  ! bottom atm level zon wind velocity sqrt(Sa_u*Sa_u+Sa_v*Sa_v)  m/s
     real(r8),allocatable :: Faxa_swndr_cw(:) ! direct near-infrared incident solar radiation W m-2
     real(r8),allocatable :: Faxa_swvdr_cw(:) ! direct visible indicent solar radiation W m-2
     real(r8),allocatable :: Faxa_swndf_cw(:) ! diffuse near-infrared incident solar radiation W m-2 
     real(r8),allocatable :: Faxa_swvdf_cw(:) ! diffuse visible incident solar radiation W m-2
-
-    ! Local for scatter
-    real(r8),allocatable :: Sl_t_local(:)
-    real(r8),allocatable :: Sl_snowh_local(:)
-    real(r8),allocatable :: Faxa_swndr_cw_local(:)
-    real(r8),allocatable :: Faxa_swvdr_cw_local(:)
-    real(r8),allocatable :: Faxa_swndf_cw_local(:)
-    real(r8),allocatable :: Faxa_swvdf_cw_local(:)
-    real(r8),allocatable :: Sa_shum_local(:)
-    real(r8),allocatable :: Sa_tbot_local(:)
-    real(r8),allocatable :: Sa_vel_local(:)
-    real(r8),allocatable :: Sa_u_local(:)
-    real(r8),allocatable :: Sa_v_local(:)
-    real(r8),allocatable :: Fall_lat_local(:)
-    real(r8),allocatable :: Fall_sen_local(:)
-    real(r8),allocatable :: Fall_lwup_local(:)
-    real(r8),allocatable :: Fall_evap_local(:)
-    real(r8),allocatable :: Fall_swnet_local(:)
-    real(r8),allocatable :: Sl_ram1_local(:)
 
 
     ! lnd2atm on master
@@ -510,11 +488,8 @@ contains
 
     ! Allocate global array for x2l variables
     if (masterproc) then
-      allocate(Sa_vel(gsize))
       allocate(Sa_u(gsize))
       allocate(Sa_v(gsize))
-      allocate(Sa_shum(gsize))
-      allocate(Sa_tbot(gsize))
       allocate(Faxa_swndr(gsize))
       allocate(Faxa_swvdr(gsize))
       allocate(Faxa_swndf(gsize))
@@ -559,10 +534,6 @@ contains
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier) ! Atm state m/s
     call MPI_GATHERV(x2l(index_x2l_Sa_v,:), lsize, MPI_DOUBLE, Sa_v, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier) ! Atm state m/s
-    call MPI_GATHERV(x2l(index_x2l_Sa_shum,:), lsize, MPI_DOUBLE, Sa_shum, nCellsPerProc, &
-                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
-    call MPI_GATHERV(x2l(index_x2l_Sa_tbot,:), lsize, MPI_DOUBLE, Sa_tbot, nCellsPerProc, &
-                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
     ! Surface albedo
     call MPI_GATHERV(x2l(index_x2l_Faxa_swndr,:), lsize, MPI_DOUBLE, Faxa_swndr, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
@@ -605,25 +576,6 @@ contains
 
     call MPI_Barrier(mpicom, ier)
     
-
-    ! scattered local array after receiving from CyberWater
-    allocate(Sl_t_local(lsize))
-    allocate(Sl_snowh_local(lsize))
-    allocate(Faxa_swndr_cw_local(lsize))
-    allocate(Faxa_swvdr_cw_local(lsize))
-    allocate(Faxa_swndf_cw_local(lsize))
-    allocate(Faxa_swvdf_cw_local(lsize))
-    allocate(Sa_shum_local(lsize))
-    allocate(Sa_tbot_local(lsize))
-    allocate(Sa_vel_local(lsize))
-    allocate(Sa_u_local(lsize))
-    allocate(Sa_v_local(lsize))
-    allocate(Fall_lat_local(lsize))
-    allocate(Fall_sen_local(lsize))
-    allocate(Fall_lwup_local(lsize))
-    allocate(Fall_evap_local(lsize))
-    allocate(Fall_swnet_local(lsize))
-    allocate(Sl_ram1_local(lsize))
 
     ! lnd2atm variables on local
     allocate(t_rad_grc_local(lsize))
@@ -864,26 +816,6 @@ contains
     end if
 
 
-
-    deallocate(Sl_t_local)
-    deallocate(Sl_snowh_local)
-    deallocate(Faxa_swndr_cw_local)
-    deallocate(Faxa_swvdr_cw_local)
-    deallocate(Faxa_swndf_cw_local)
-    deallocate(Faxa_swvdf_cw_local)
-    deallocate(Sa_shum_local)
-    deallocate(Sa_tbot_local)
-    deallocate(Sa_vel_local)
-    deallocate(Sa_u_local)
-    deallocate(Sa_v_local)
-    deallocate(Fall_lat_local)
-    deallocate(Fall_sen_local)
-    deallocate(Fall_lwup_local)
-    deallocate(Fall_evap_local)
-    deallocate(Fall_swnet_local)
-    deallocate(Sl_ram1_local)
-
-
     ! Clean up lnd2atm on local
     deallocate(t_rad_grc_local)
     deallocate(h2osno_grc_local)
@@ -904,11 +836,8 @@ contains
       deallocate(nCellsPerProc)
       deallocate(nCellsDisplacement)
       deallocate(indexToCellIDGathered)
-      deallocate(Sa_vel)
       deallocate(Sa_u)
       deallocate(Sa_v)
-      deallocate(Sa_shum)
-      deallocate(Sa_tbot)
       deallocate(Faxa_swndr)
       deallocate(Faxa_swvdr)
       deallocate(Faxa_swndf)
