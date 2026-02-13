@@ -381,8 +381,6 @@ contains
     ! Global, variables read from x2l
     real(r8),allocatable :: Sa_u(:)    ! zonal wind velocity
     real(r8),allocatable :: Sa_v(:)    ! meridional wind velocity
-    real(r8),allocatable :: Sa_shum(:) ! bottom atm level spec hum Pa
-    real(r8),allocatable :: Sa_tbot(:) ! bottom atm level temp     degree
     real(r8),allocatable :: Faxa_swndr(:) ! direct near-infrared incident solar radiation W m-2
     real(r8),allocatable :: Faxa_swvdr(:) ! direct visible indicent solar radiation W m-2
     real(r8),allocatable :: Faxa_swndf(:) ! diffuse near-infrared incident solar radiation W m-2
@@ -400,38 +398,43 @@ contains
     real(r8),allocatable :: Sl_ram1_recv(:)   ! Aerodynamic resistance  s/m
 
     ! Derived, variables
-    real(r8),allocatable :: Sa_vel(:)  ! bottom atm level zon wind velocity sqrt(Sa_u*Sa_u+Sa_v*Sa_v)  m/s
     real(r8),allocatable :: Faxa_swndr_cw(:) ! direct near-infrared incident solar radiation W m-2
     real(r8),allocatable :: Faxa_swvdr_cw(:) ! direct visible indicent solar radiation W m-2
     real(r8),allocatable :: Faxa_swndf_cw(:) ! diffuse near-infrared incident solar radiation W m-2 
     real(r8),allocatable :: Faxa_swvdf_cw(:) ! diffuse visible incident solar radiation W m-2
 
-    ! Local for scatter
-    real(r8),allocatable :: Sl_t_local(:)
-    real(r8),allocatable :: Sl_snowh_local(:)
-    real(r8),allocatable :: Faxa_swndr_cw_local(:)
-    real(r8),allocatable :: Faxa_swvdr_cw_local(:)
-    real(r8),allocatable :: Faxa_swndf_cw_local(:)
-    real(r8),allocatable :: Faxa_swvdf_cw_local(:)
-    real(r8),allocatable :: Sa_shum_local(:)
-    real(r8),allocatable :: Sa_tbot_local(:)
-    real(r8),allocatable :: Sa_vel_local(:)
-    real(r8),allocatable :: Sa_u_local(:)
-    real(r8),allocatable :: Sa_v_local(:)
-    real(r8),allocatable :: Fall_lat_local(:)
-    real(r8),allocatable :: Fall_sen_local(:)
-    real(r8),allocatable :: Fall_lwup_local(:)
-    real(r8),allocatable :: Fall_evap_local(:)
-    real(r8),allocatable :: Fall_swnet_local(:)
-    real(r8),allocatable :: Sl_ram1_local(:)
-
 
     ! lnd2atm on master
     real(r8),allocatable :: t_rad_grc_global(:)
+    real(r8),allocatable :: h2osno_grc_global(:)
+    real(r8),allocatable :: albd_swvdr_global(:) ! Direct albedo (visible radiation)
+    real(r8),allocatable :: albd_swndr_global(:) ! Direct albedo (near-infrared radiation)
+    real(r8),allocatable :: albi_swvdf_global(:) ! Diffuse albedo (visible radiation)
+    real(r8),allocatable :: albi_swndf_global(:) ! Diffuse albedo (near-infrared radiation)
+    real(r8),allocatable :: eflx_lh_tot_grc_global(:)
+    real(r8),allocatable :: eflx_sh_tot_grc_global(:)
+    real(r8),allocatable :: eflx_lwrad_out_grc_global(:)
+    real(r8),allocatable :: qflx_evap_tot_grc_global(:)
+    real(r8),allocatable :: fsa_grc_global(:)
+    real(r8),allocatable :: taux_grc_global(:)
+    real(r8),allocatable :: tauy_grc_global(:)
+    real(r8),allocatable :: forc_rho_not_downscaled_grc_global(:)
 
 
     ! lnd2atm on local
     real(r8),allocatable :: t_rad_grc_local(:)
+    real(r8),allocatable :: h2osno_grc_local(:) 
+    real(r8),allocatable :: albd_swvdr_local(:)
+    real(r8),allocatable :: albd_swndr_local(:)
+    real(r8),allocatable :: albi_swvdf_local(:)
+    real(r8),allocatable :: albi_swndf_local(:)
+    real(r8),allocatable :: eflx_lh_tot_grc_local(:)
+    real(r8),allocatable :: eflx_sh_tot_grc_local(:)
+    real(r8),allocatable :: eflx_lwrad_out_grc_local(:)
+    real(r8),allocatable :: qflx_evap_tot_grc_local(:)
+    real(r8),allocatable :: fsa_grc_local(:)
+    real(r8),allocatable :: taux_grc_local(:)
+    real(r8),allocatable :: tauy_grc_local(:)
 
     ! Local
     real(r8) :: ubot, vbot
@@ -485,11 +488,8 @@ contains
 
     ! Allocate global array for x2l variables
     if (masterproc) then
-      allocate(Sa_vel(gsize))
       allocate(Sa_u(gsize))
       allocate(Sa_v(gsize))
-      allocate(Sa_shum(gsize))
-      allocate(Sa_tbot(gsize))
       allocate(Faxa_swndr(gsize))
       allocate(Faxa_swvdr(gsize))
       allocate(Faxa_swndf(gsize))
@@ -513,6 +513,19 @@ contains
 
       ! lnd2atm variables on master
       allocate(t_rad_grc_global(gsize))
+      allocate(h2osno_grc_global(gsize))
+      allocate(albd_swvdr_global(gsize))
+      allocate(albd_swndr_global(gsize))
+      allocate(albi_swvdf_global(gsize))
+      allocate(albi_swndf_global(gsize))
+      allocate(eflx_lh_tot_grc_global(gsize))
+      allocate(eflx_sh_tot_grc_global(gsize))
+      allocate(eflx_lwrad_out_grc_global(gsize))
+      allocate(qflx_evap_tot_grc_global(gsize))
+      allocate(fsa_grc_global(gsize))
+      allocate(taux_grc_global(gsize))
+      allocate(tauy_grc_global(gsize))
+      allocate(forc_rho_not_downscaled_grc_global(gsize))
 
     end if
 
@@ -521,10 +534,6 @@ contains
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier) ! Atm state m/s
     call MPI_GATHERV(x2l(index_x2l_Sa_v,:), lsize, MPI_DOUBLE, Sa_v, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier) ! Atm state m/s
-    call MPI_GATHERV(x2l(index_x2l_Sa_shum,:), lsize, MPI_DOUBLE, Sa_shum, nCellsPerProc, &
-                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
-    call MPI_GATHERV(x2l(index_x2l_Sa_tbot,:), lsize, MPI_DOUBLE, Sa_tbot, nCellsPerProc, &
-                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
     ! Surface albedo
     call MPI_GATHERV(x2l(index_x2l_Faxa_swndr,:), lsize, MPI_DOUBLE, Faxa_swndr, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
@@ -538,32 +547,50 @@ contains
     ! Gather lnd2atm variables
     call MPI_GATHERV(lnd2atm_vars%t_rad_grc, lsize, MPI_DOUBLE, t_rad_grc_global, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
-
+    call MPI_GATHERV(lnd2atm_vars%h2osno_grc, lsize, MPI_DOUBLE, h2osno_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,1), lsize, MPI_DOUBLE, albd_swvdr_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,2), lsize, MPI_DOUBLE, albd_swvdr_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%albi_grc(bounds%begg:bounds%endg,1), lsize, MPI_DOUBLE, albi_swvdf_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%albi_grc(bounds%begg:bounds%endg,2), lsize, MPI_DOUBLE, albi_swndf_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%eflx_lh_tot_grc, lsize, MPI_DOUBLE, eflx_lh_tot_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%eflx_sh_tot_grc, lsize, MPI_DOUBLE, eflx_sh_tot_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%eflx_lwrad_out_grc, lsize, MPI_DOUBLE, eflx_lwrad_out_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%qflx_evap_tot_grc, lsize, MPI_DOUBLE, qflx_evap_tot_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%fsa_grc, lsize, MPI_DOUBLE, fsa_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%taux_grc, lsize, MPI_DOUBLE, taux_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(lnd2atm_vars%tauy_grc, lsize, MPI_DOUBLE, tauy_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
+    call MPI_GATHERV(atm2lnd_vars%forc_rho_not_downscaled_grc, lsize, MPI_DOUBLE, forc_rho_not_downscaled_grc_global, nCellsPerProc, &
+                        nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
 
     call MPI_Barrier(mpicom, ier)
     
 
-    ! scattered local array after receiving from CyberWater
-    allocate(Sl_t_local(lsize))
-    allocate(Sl_snowh_local(lsize))
-    allocate(Faxa_swndr_cw_local(lsize))
-    allocate(Faxa_swvdr_cw_local(lsize))
-    allocate(Faxa_swndf_cw_local(lsize))
-    allocate(Faxa_swvdf_cw_local(lsize))
-    allocate(Sa_shum_local(lsize))
-    allocate(Sa_tbot_local(lsize))
-    allocate(Sa_vel_local(lsize))
-    allocate(Sa_u_local(lsize))
-    allocate(Sa_v_local(lsize))
-    allocate(Fall_lat_local(lsize))
-    allocate(Fall_sen_local(lsize))
-    allocate(Fall_lwup_local(lsize))
-    allocate(Fall_evap_local(lsize))
-    allocate(Fall_swnet_local(lsize))
-    allocate(Sl_ram1_local(lsize))
-
     ! lnd2atm variables on local
     allocate(t_rad_grc_local(lsize))
+    allocate(h2osno_grc_local(lsize))
+    allocate(albd_swvdr_local(lsize))
+    allocate(albd_swndr_local(lsize))
+    allocate(albi_swvdf_local(lsize))
+    allocate(albi_swndf_local(lsize))
+    allocate(eflx_lh_tot_grc_local(lsize))
+    allocate(eflx_sh_tot_grc_local(lsize))
+    allocate(eflx_lwrad_out_grc_local(lsize))
+    allocate(qflx_evap_tot_grc_local(lsize))
+    allocate(fsa_grc_local(lsize))
+    allocate(taux_grc_local(lsize))
+    allocate(tauy_grc_local(lsize))
 
 
     if (masterproc) then
@@ -600,10 +627,6 @@ contains
         Faxa_swvdr_cw(i) = 0.25 * Sl_albd_recv(i)
         Faxa_swndf_cw(i) = 0.25 * Sl_albd_recv(i)
         Faxa_swvdf_cw(i) = 0.25 * Sl_albd_recv(i)
-
-!        ubot       = Sa_u(i)         ! m/s
-!        vbot       = Sa_v(i)         ! m/s
-!        Sa_vel(i)  = sqrt(ubot*ubot + vbot*vbot)
       end do
 
 
@@ -617,6 +640,18 @@ contains
 
       t_rad_grc_global(subdomain_ind) = Sl_t_recv
       write(iulog,*) "Updated t_rad_grc is ", t_rad_grc_global(subdomain_ind)
+      h2osno_grc_global(subdomain_ind) = Sl_snowh_recv
+      albd_swvdr_global(subdomain_ind) = Faxa_swndr_cw
+      albd_swndr_global(subdomain_ind) = Faxa_swvdr_cw
+      albi_swvdf_global(subdomain_ind) = Faxa_swndf_cw
+      albi_swndf_global(subdomain_ind) = Faxa_swvdf_cw
+      eflx_lh_tot_grc_global(subdomain_ind) = Fall_lat_recv
+      eflx_sh_tot_grc_global(subdomain_ind) = Fall_sen_recv
+      eflx_lwrad_out_grc_global(subdomain_ind) = Fall_lwup_recv
+      qflx_evap_tot_grc_global(subdomain_ind) = Fall_evap_recv
+      fsa_grc_global(subdomain_ind) = Fall_swnet_recv
+      taux_grc_global(subdomain_ind) = (-1) * forc_rho_not_downscaled_grc_global(subdomain_ind) * Sa_u(subdomain_ind) / Sl_ram1_recv
+      tauy_grc_global(subdomain_ind) = (-1) * forc_rho_not_downscaled_grc_global(subdomain_ind) * Sa_v(subdomain_ind) / Sl_ram1_recv
 
       print *, "t_rad_grc_global (global) min =", minval(t_rad_grc_global)
       print *, "t_rad_grc_global (global) max =", maxval(t_rad_grc_global)
@@ -624,6 +659,30 @@ contains
       ! Step 3: Scatter lnd2atm variables to local
       call MPI_SCATTERV(t_rad_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
                     t_rad_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(h2osno_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    h2osno_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(albd_swvdr_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    albd_swvdr_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(albd_swndr_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    albd_swndr_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(albi_swvdf_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    albi_swvdf_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(albi_swndf_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    albi_swndf_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(eflx_lh_tot_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    eflx_lh_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(eflx_sh_tot_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    eflx_sh_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(eflx_lwrad_out_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    eflx_lwrad_out_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(qflx_evap_tot_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    qflx_evap_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(fsa_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    fsa_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(taux_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    taux_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(tauy_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
+                    tauy_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
 
 !     Old method
 !     Sl_t_recv     -> Sl_t_local          -> lnd2atm_vars%t_rad_grc 
@@ -643,48 +702,35 @@ contains
 !     Fall_evap_recv -> Fall_evap_local    -> lnd2atm_vars%qflx_evap_tot_grc
 !     Fall_swnet_recv -> Fall_swnet_local  -> lnd2atm_vars%fsa_grc
 
-!      ! Scatter received data
-!      call MPI_SCATTERV(Sl_t_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sl_t_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Sl_snowh_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sl_snowh_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Faxa_swndr_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Faxa_swndr_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Faxa_swvdr_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Faxa_swvdr_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Faxa_swndf_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Faxa_swndf_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Faxa_swvdf_cw, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Faxa_swvdf_cw_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      ----------------------------- Data NOT from CyberWater ---------------------------------
-!      call MPI_SCATTERV(Sa_shum, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sa_shum_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Sa_tbot, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sa_tbot_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Sa_vel, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sa_vel_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Sa_u, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sa_u_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Sa_v, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sa_v_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      ----------------------------------------------------------------------------------------
-!      call MPI_SCATTERV(Fall_lat_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Fall_lat_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Fall_sen_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Fall_sen_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Fall_lwup_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Fall_lwup_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Fall_evap_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Fall_evap_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Fall_swnet_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Fall_swnet_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-!      call MPI_SCATTERV(Sl_ram1_recv, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
-!                    Sl_ram1_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
     else
       ! On non-root, sendbuf/counts/displs are ignored by the standard for intracommunicators,
       ! but still need to be present. Many MPIs accept the following:
       call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
                       t_rad_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      h2osno_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      albd_swvdr_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      albd_swndr_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      albi_swvdf_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      albi_swndf_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      eflx_lh_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      eflx_sh_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      eflx_lwrad_out_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      qflx_evap_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      fsa_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      taux_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
+      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+                      tauy_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
 
     end if
     call MPI_Barrier(mpicom, ier)
@@ -695,6 +741,18 @@ contains
 
     ! Update lnd2atm_vars using CyberWater data
     lnd2atm_vars%t_rad_grc(bounds%begg:bounds%endg) = t_rad_grc_local(1:lsize)
+    lnd2atm_vars%h2osno_grc(bounds%begg:bounds%endg) = h2osno_grc_local(1:lsize)
+    lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,1) = albd_swvdr_local(1:lsize)
+    lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,2) = albd_swndr_local(1:lsize)
+    lnd2atm_vars%albi_grc(bounds%begg:bounds%endg,1) = albi_swvdf_local(1:lsize)
+    lnd2atm_vars%albi_grc(bounds%begg:bounds%endg,2) = albi_swndf_local(1:lsize)
+    lnd2atm_vars%eflx_lh_tot_grc(bounds%begg:bounds%endg) = eflx_lh_tot_grc_local(1:lsize)
+    lnd2atm_vars%eflx_sh_tot_grc(bounds%begg:bounds%endg) = eflx_sh_tot_grc_local(1:lsize)
+    lnd2atm_vars%eflx_lwrad_out_grc(bounds%begg:bounds%endg) = eflx_lwrad_out_grc_local(1:lsize)
+    lnd2atm_vars%qflx_evap_tot_grc(bounds%begg:bounds%endg) = qflx_evap_tot_grc_local(1:lsize)
+    lnd2atm_vars%fsa_grc(bounds%begg:bounds%endg) = fsa_grc_local(1:lsize)
+    lnd2atm_vars%taux_grc(bounds%begg:bounds%endg) = taux_grc_local(1:lsize)
+    lnd2atm_vars%tauy_grc(bounds%begg:bounds%endg) = tauy_grc_local(1:lsize)
 !    do g = bounds%begg,bounds%endg ! ISSUE with previous assignment
 !       lnd2atm_vars%t_rad_grc(g)  = t_rad_grc_local(g)
 !    end do
@@ -708,63 +766,78 @@ contains
       write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
       call MPI_Abort(mpicom, 1, ier)
     end if
+    
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%h2osno_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
 
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,1))) .or. &
+      any(.not. ieee_is_finite(lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,2))) .or. &
+      any(.not. ieee_is_finite(lnd2atm_vars%albi_grc(bounds%begg:bounds%endg,1))) .or. & 
+      any(.not. ieee_is_finite(lnd2atm_vars%albi_grc(bounds%begg:bounds%endg,2))) ) then
+      write(*,*) 'NaN/Inf in albedo locals on rank ', my_rank
+      call MPI_Abort(mpicom, 1, ier)
+    end if
 
-!    -------------------- old --------------------
-!    do g = bounds%begg,bounds%endg
-!       i = 1 + (g-bounds%begg)
-!       lnd2atm_vars%t_rad_grc(g)    = Sl_t_local(g)
-!       lnd2atm_vars%h2osno_grc(g)   = Sl_snowh_local(g)
-!       lnd2atm_vars%albd_grc(g,1)   = Faxa_swvdr_cw_local(g) ! Direct albedo (visible radiation)
-!       lnd2atm_vars%albd_grc(g,2)   = Faxa_swndr_cw_local(g) ! Direct albedo (near-infrared radiation)
-!       lnd2atm_vars%albi_grc(g,1)   = Faxa_swvdf_cw_local(g) ! Diffuse albedo (visible radiation)
-!       lnd2atm_vars%albi_grc(g,2)   = Faxa_swndf_cw_local(g) ! Diffuse albedo (near-infrared radiation)
-!       lnd2atm_vars%t_ref2m_grc(g)  = Sa_tbot_local(g)
-!       lnd2atm_vars%q_ref2m_grc(g)  = Sa_shum_local(g)
-!       lnd2atm_vars%u_ref10m_grc(g) = Sa_vel_local(g)
-!       lnd2atm_vars%u_ref10m_with_gusts_grc(g) = Sa_vel_local(g) ! need to revisit wind gust
-!       lnd2atm_vars%taux_grc(g)     = (-1) * atm2lnd_vars%forc_rho_not_downscaled_grc(g) * Sa_u_local(g) / Sl_ram1_local(g)
-!       lnd2atm_vars%tauy_grc(g)     = (-1) * atm2lnd_vars%forc_rho_not_downscaled_grc(g) * Sa_v_local(g) / Sl_ram1_local(g)
-!       lnd2atm_vars%eflx_lh_tot_grc(g)    = Fall_lat_local(g)
-!       lnd2atm_vars%eflx_sh_tot_grc(g)    = Fall_sen_local(g)
-!       lnd2atm_vars%eflx_lwrad_out_grc(g) = Fall_lwup_local(g)
-!       lnd2atm_vars%qflx_evap_tot_grc(g)  = Fall_evap_local(g)
-!       lnd2atm_vars%fsa_grc(g)            = Fall_swnet_local(g)
-!    end do
-       
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%eflx_lh_tot_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
 
-    deallocate(Sl_t_local)
-    deallocate(Sl_snowh_local)
-    deallocate(Faxa_swndr_cw_local)
-    deallocate(Faxa_swvdr_cw_local)
-    deallocate(Faxa_swndf_cw_local)
-    deallocate(Faxa_swvdf_cw_local)
-    deallocate(Sa_shum_local)
-    deallocate(Sa_tbot_local)
-    deallocate(Sa_vel_local)
-    deallocate(Sa_u_local)
-    deallocate(Sa_v_local)
-    deallocate(Fall_lat_local)
-    deallocate(Fall_sen_local)
-    deallocate(Fall_lwup_local)
-    deallocate(Fall_evap_local)
-    deallocate(Fall_swnet_local)
-    deallocate(Sl_ram1_local)
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%eflx_sh_tot_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
+
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%eflx_lwrad_out_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
+
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%qflx_evap_tot_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
+
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%fsa_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
+
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%taux_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
+
+    if ( any(.not. ieee_is_finite(lnd2atm_vars%tauy_grc)) ) then
+      write(*,*) 'NaN/Inf present on rank ', my_rank, ' before export'
+      call MPI_Abort(mpicom, 1, ier)
+    end if
 
 
     ! Clean up lnd2atm on local
     deallocate(t_rad_grc_local)
+    deallocate(h2osno_grc_local)
+    deallocate(albd_swvdr_local)
+    deallocate(albd_swndr_local) 
+    deallocate(albi_swvdf_local)
+    deallocate(albi_swndf_local)
+    deallocate(eflx_lh_tot_grc_local)
+    deallocate(eflx_sh_tot_grc_local)
+    deallocate(eflx_lwrad_out_grc_local)
+    deallocate(qflx_evap_tot_grc_local)
+    deallocate(fsa_grc_local)
+    deallocate(taux_grc_local)
+    deallocate(tauy_grc_local)
 
     ! Clean up allocated resources
     if (masterproc) then
       deallocate(nCellsPerProc)
       deallocate(nCellsDisplacement)
       deallocate(indexToCellIDGathered)
-      deallocate(Sa_vel)
       deallocate(Sa_u)
       deallocate(Sa_v)
-      deallocate(Sa_shum)
-      deallocate(Sa_tbot)
       deallocate(Faxa_swndr)
       deallocate(Faxa_swvdr)
       deallocate(Faxa_swndf)
@@ -785,6 +858,19 @@ contains
       deallocate(Sl_ram1_recv)
       ! lnd2atm variable on master 
       deallocate(t_rad_grc_global)
+      deallocate(h2osno_grc_global)
+      deallocate(albd_swvdr_global)
+      deallocate(albd_swndr_global)
+      deallocate(albi_swvdf_global)
+      deallocate(albi_swndf_global)
+      deallocate(eflx_lh_tot_grc_global)
+      deallocate(eflx_sh_tot_grc_global)
+      deallocate(eflx_lwrad_out_grc_global)
+      deallocate(qflx_evap_tot_grc_global)
+      deallocate(fsa_grc_global)
+      deallocate(taux_grc_global)
+      deallocate(tauy_grc_global)
+      deallocate(forc_rho_not_downscaled_grc_global)
     end if
 
     print *, "Dongyu debug here"
