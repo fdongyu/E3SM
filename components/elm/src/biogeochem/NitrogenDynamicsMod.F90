@@ -286,6 +286,7 @@ contains
     real(r8) :: tot_water(bounds%begc:bounds%endc)     ! total column liquid water (kg water/m2)
     real(r8) :: surface_water(bounds%begc:bounds%endc) ! liquid water to shallow surface depth (kg water/m2)
     real(r8) :: drain_tot(bounds%begc:bounds%endc)     ! total drainage flux (mm H2O /s)
+    real(r8) :: runoff_layer_fraction                  ! fraction of a soil layer within the runoff mixing depth
     real(r8), parameter :: depth_runoff_Nloss = 0.05   ! (m) depth over which runoff mixes with soil water for N loss to runoff
     !-----------------------------------------------------------------------
 
@@ -368,14 +369,15 @@ contains
                smin_no3_leached_vr(c,j) = max(smin_no3_leached_vr(c,j), 0._r8)
                !
                !
-               ! calculate the N loss from surface runoff, assuming a shallow mixing of surface waters into soil and removal based on runoff
-               if ( zisoi(j) <= depth_runoff_Nloss )  then
+               ! Calculate N loss from surface runoff. Retain the fractional
+               ! overlap when the runoff mixing depth cuts through a layer;
+               ! the volumetric loss is applied over the full layer thickness.
+               runoff_layer_fraction = max(0._r8, min(1._r8, &
+                    (depth_runoff_Nloss - zisoi(j-1)) / col_pp%dz(c,j)))
+               if (surface_water(c) > 0._r8 .and. runoff_layer_fraction > 0._r8) then
                   smin_no3_runoff_vr(c,j) = disn_conc * qflx_surf(c) * &
-                       h2osoi_liq(c,j) / ( surface_water(c) * col_pp%dz(c,j) )
-               elseif ( zisoi(j-1) < depth_runoff_Nloss )  then
-                  smin_no3_runoff_vr(c,j) = disn_conc * qflx_surf(c) * &
-                       h2osoi_liq(c,j) * ((depth_runoff_Nloss - zisoi(j-1)) / &
-                       col_pp%dz(c,j)) / ( surface_water(c) * (depth_runoff_Nloss-zisoi(j-1) ))
+                       h2osoi_liq(c,j) * runoff_layer_fraction / &
+                       (surface_water(c) * col_pp%dz(c,j))
                else
                   smin_no3_runoff_vr(c,j) = 0._r8
                endif
