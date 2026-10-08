@@ -373,6 +373,7 @@ contains
 
     ! MPI variables
     integer :: iProc, nProcs
+    integer :: scatter_dummy(1)
 
     ! DATA VARIABLES
     integer :: receive_var_id
@@ -444,6 +445,8 @@ contains
     
 
     character(len=*), parameter :: sub = 'cw_export_mct'
+
+    scatter_dummy = 0
 
     ! local grid order
     allocate(gindex(bounds%begg:bounds%endg),stat=ier)
@@ -705,31 +708,31 @@ contains
     else
       ! On non-root, sendbuf/counts/displs are ignored by the standard for intracommunicators,
       ! but still need to be present. Many MPIs accept the following:
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       t_rad_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       h2osno_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       albd_swvdr_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       albd_swndr_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       albi_swvdf_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       albi_swndf_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       eflx_lh_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       eflx_sh_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       eflx_lwrad_out_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       qflx_evap_tot_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       fsa_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       taux_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
-      call MPI_SCATTERV(MPI_BOTTOM, 0, 0, MPI_DOUBLE, &
+      call MPI_SCATTERV(MPI_BOTTOM, scatter_dummy, scatter_dummy, MPI_DOUBLE, &
                       tauy_grc_local, lsize, MPI_DOUBLE, 0, mpicom, ier)
 
     end if
