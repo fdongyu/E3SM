@@ -494,7 +494,7 @@ contains
       allocate(Faxa_swvdr(gsize))
       allocate(Faxa_swndf(gsize))
       allocate(Faxa_swvdf(gsize))
-      allocate(Faxa_swndr_cw(gsize))
+      allocate(Faxa_swndr_cw(gsize)) ! TO FIX
       allocate(Faxa_swvdr_cw(gsize))
       allocate(Faxa_swndf_cw(gsize))
       allocate(Faxa_swvdf_cw(gsize))
@@ -551,7 +551,7 @@ contains
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
     call MPI_GATHERV(lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,1), lsize, MPI_DOUBLE, albd_swvdr_global, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
-    call MPI_GATHERV(lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,2), lsize, MPI_DOUBLE, albd_swvdr_global, nCellsPerProc, &
+    call MPI_GATHERV(lnd2atm_vars%albd_grc(bounds%begg:bounds%endg,2), lsize, MPI_DOUBLE, albd_swndr_global, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
     call MPI_GATHERV(lnd2atm_vars%albi_grc(bounds%begg:bounds%endg,1), lsize, MPI_DOUBLE, albi_swvdf_global, nCellsPerProc, &
                         nCellsDisplacement, MPI_DOUBLE, 0, mpicom, ier)
@@ -641,10 +641,10 @@ contains
       t_rad_grc_global(subdomain_ind) = Sl_t_recv
       write(iulog,*) "Updated t_rad_grc is ", t_rad_grc_global(subdomain_ind)
       h2osno_grc_global(subdomain_ind) = Sl_snowh_recv
-      albd_swvdr_global(subdomain_ind) = Faxa_swndr_cw
-      albd_swndr_global(subdomain_ind) = Faxa_swvdr_cw
-      albi_swvdf_global(subdomain_ind) = Faxa_swndf_cw
-      albi_swndf_global(subdomain_ind) = Faxa_swvdf_cw
+      albd_swvdr_global(subdomain_ind) = Faxa_swvdr_cw
+      albd_swndr_global(subdomain_ind) = Faxa_swndr_cw
+      albi_swvdf_global(subdomain_ind) = Faxa_swvdf_cw
+      albi_swndf_global(subdomain_ind) = Faxa_swndf_cw
       eflx_lh_tot_grc_global(subdomain_ind) = Fall_lat_recv
       eflx_sh_tot_grc_global(subdomain_ind) = Fall_sen_recv
       eflx_lwrad_out_grc_global(subdomain_ind) = Fall_lwup_recv
