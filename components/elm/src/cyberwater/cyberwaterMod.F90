@@ -96,8 +96,6 @@ contains
     ! Set Displacement variable for GATHERV command
     if (masterproc) then
        nCellsGlobal = sum(nCellsPerProc)
-       write(6,*) 'nCellsGlobal is ', nCellsGlobal
-       write(6,*) 'gsize is ', gsize
        if (nCellsGlobal .NE. gsize) then
           call endrun('global size not consistent!')
        end if
@@ -190,11 +188,6 @@ contains
       write(iulog,*) 'Read subdomain size: ', subdomain_size
       if (subdomain_size == 0) call endrun('subdomain_index not set')
 
-      if (subdomain_size > 0) then
-        write(iulog,*) 'First 10: ', lats_in(1:min(10,subdomain_size)), lons_in(1:min(10,subdomain_size))
-        write(iulog,*) 'Last 10 : ', lats_in(max(1,subdomain_size-9):subdomain_size), lons_in(max(1,subdomain_size-9):subdomain_size)
-      end if
-
       ! 2) (optional) normalize longitudes to match glon convention
       gmin = minval(glon)
       if (gmin >= 0.0) then
@@ -205,19 +198,7 @@ contains
       call normalize_lon_array(lons_in, want_0360 = is_glon_0360)  ! set is_glon_0360 accordingly
 
       ! 3) build subdomain_ind by nearest-neighbor on the global 1D lat/lon
-      write(iulog,*) '--- Debug lat/lon arrays ---'
-      write(iulog,*) 'glat size =', size(glat), ' glon size =', size(glon)
-      write(iulog,*) 'glat(1:5) = ', glat(1:min(5,size(glat)))
-      write(iulog,*) 'glon(1:5) = ', glon(1:min(5,size(glon)))
-      write(iulog,*) 'glat(end-4:end) = ', glat(max(1,size(glat)-4):size(glat))
-      write(iulog,*) 'glon(end-4:end) = ', glon(max(1,size(glon)-4):size(glon))
-
-      write(iulog,*) 'lats_in size =', size(lats_in), ' lons_in size =', size(lons_in)
-      write(iulog,*) 'lats_in(1:min(5,size(lats_in))) = ', lats_in(1:min(5,size(lats_in)))
-      write(iulog,*) 'lons_in(1:min(5,size(lons_in))) = ', lons_in(1:min(5,size(lons_in)))
-
       call latlon_to_indices(glat, glon, lats_in, lons_in, subdomain_ind)
-      write(iulog,*) 'Index First 10 ', subdomain_ind(1:10)
 
 
       write(iulog,*) 'Start session'
@@ -247,7 +228,6 @@ contains
       ! Persistent HTTP, non-batch transfer, with SSE status updates.
       id = start_session(sd, use_sse=.true., enable_batch=.false., force_http=2)
 
-      print *, "------ Sleeping for 10 seconds ------"
       call sleep(10)
 
       ! Join the session
@@ -331,10 +311,6 @@ contains
          curr_ymd=ymd, curr_tod=tod_sync,  &
          curr_yr=yr_sync, curr_mon=mon_sync, curr_day=day_sync)
 
-    if (masterproc) then
-      write(iulog, '(i4.4,"-",i2.2,"-",i2.2,"-",i5.5)' ) yr_sync,mon_sync,day_sync,tod_sync
-    end if
-
     ! update the clock in cyberwater
 
     ! import data from coupler
@@ -348,9 +324,6 @@ contains
     ! run cyberwater
     call t_barrierf('sync_cyberwater_run', mpicom)
     call t_startf ('cyberwater_run')
-    if (masterproc) then
-      write(iulog,*) 'Running CyberWater'
-    end if
     call t_stopf ('cyberwater_run')
 
     call MPI_Barrier(mpicom, ier)

@@ -58,7 +58,7 @@ contains
     !
     ! !LOCAL VARIABLES:
     integer :: g, i, j, n
-    integer :: i1, i2, subdomain_size
+    integer :: subdomain_size
     integer,allocatable :: gindex(:)  ! Number the local grid points
     integer :: lsize,gsize            ! GS Map size
     integer :: ier                    ! Error code
@@ -98,18 +98,10 @@ contains
      
     integer :: send_status
 
-    real(r8), save :: last_exit_time = 0.0  ! Time when subroutine last exited
-    real(r8) :: entry_time, outside_time
-    logical, save :: first_call = .true.  ! To handle the first call scenario
     real(r8) :: t_start, t_end, t_elapsed
 
 
     character(len=*), parameter :: sub = 'cw_import_mct'
-
-    if (masterproc) then
-      write(6,*) 'Importing variables from drv'
-    end if
-
 
     ! local grid order 
     allocate(gindex(bounds%begg:bounds%endg),stat=ier) 
@@ -227,18 +219,7 @@ contains
     ! send data to server 
     if (masterproc) then
 
-      ! indexing array
       subdomain_size = size(subdomain_ind)
-      i1 = 1
-      i2 = min(subdomain_size, 10)   ! first 10
-      write(iulog,*) 'subdomain_ind length = ', subdomain_size
-      write(iulog,*) 'First ', i2, ' entries:'
-      write(iulog,'(A)') '  idx      lat            lon'
-      write(iulog,'(I6,2X,ES16.8,2X,ES16.8)') ( subdomain_ind(i), glat(subdomain_ind(i)), &
-                                            glon(subdomain_ind(i)), i=i1,i2 )
-
-
-
       ! Prepare data 
       ! This calculation depends on the hydrological model in CyberWater
       do i = 1, gsize
@@ -258,18 +239,6 @@ contains
         Faxa_sw(i)      = swndr + swvdr + swndf + swvdf ! solar radiation
       end do
 
-
-      call cpu_time(entry_time)
-
-      ! If not the first call, calculate the time spent outside this subroutine
-      if (.not. first_call) then
-        outside_time = entry_time - last_exit_time
-        print *, 'Time spent since last execution: ', outside_time, ' seconds'
-      else
-        first_call = .false.
-      endif
-
-      write(iulog,*) "Send data to server !"
 
       t_start = MPI_WTIME()
 
@@ -299,10 +268,6 @@ contains
       t_elapsed = t_end - t_start
       write(iulog,*) "Time used for sending data from server: ", t_elapsed, " seconds"
     
-      ! Record the exit time
-      call cpu_time(last_exit_time)
-
-
     end if
     call MPI_Barrier(mpicom, ier)
 
@@ -597,8 +562,6 @@ contains
 
 
     if (masterproc) then
-      write(iulog,*) "Receive data from server !"
-      
       ! Receive data from server
       t_start = MPI_WTIME()
       call retrieve_variable_data(index_Sl_t, Sl_t_recv)
@@ -638,11 +601,7 @@ contains
       ! Step 3: Scatter to local 
 
       ! Step 2: Assign subdomain value
-      write(iulog,*) "Original t_rad_grc is ", t_rad_grc_global(subdomain_ind)
-      write(iulog,*) "Sl_t received is ", Sl_t_recv
-
       t_rad_grc_global(subdomain_ind) = Sl_t_recv
-      write(iulog,*) "Updated t_rad_grc is ", t_rad_grc_global(subdomain_ind)
       h2osno_grc_global(subdomain_ind) = Sl_snowh_recv
       albd_swvdr_global(subdomain_ind) = Faxa_swvdr_cw
       albd_swndr_global(subdomain_ind) = Faxa_swndr_cw
@@ -655,9 +614,6 @@ contains
       fsa_grc_global(subdomain_ind) = Fall_swnet_recv
       taux_grc_global(subdomain_ind) = (-1) * forc_rho_not_downscaled_grc_global(subdomain_ind) * Sa_u(subdomain_ind) / Sl_ram1_recv
       tauy_grc_global(subdomain_ind) = (-1) * forc_rho_not_downscaled_grc_global(subdomain_ind) * Sa_v(subdomain_ind) / Sl_ram1_recv
-
-      print *, "t_rad_grc_global (global) min =", minval(t_rad_grc_global)
-      print *, "t_rad_grc_global (global) max =", maxval(t_rad_grc_global)
 
       ! Step 3: Scatter lnd2atm variables to local
       call MPI_SCATTERV(t_rad_grc_global, nCellsPerProc, nCellsDisplacement, MPI_DOUBLE, &
@@ -739,9 +695,6 @@ contains
     call MPI_Barrier(mpicom, ier)
 
 
-    print *, "t_rad_grc_local (local) min =", minval(t_rad_grc_local)
-    print *, "t_rad_grc_local (local) max =", maxval(t_rad_grc_local)
-
     ! Update lnd2atm_vars using CyberWater data
     lnd2atm_vars%t_rad_grc(bounds%begg:bounds%endg) = t_rad_grc_local(1:lsize)
     lnd2atm_vars%h2osno_grc(bounds%begg:bounds%endg) = h2osno_grc_local(1:lsize)
@@ -759,10 +712,6 @@ contains
 !    do g = bounds%begg,bounds%endg ! ISSUE with previous assignment
 !       lnd2atm_vars%t_rad_grc(g)  = t_rad_grc_local(g)
 !    end do
-
-
-    print *, "lnd2atm_vars%t_rad_grc min =", minval(lnd2atm_vars%t_rad_grc)
-    print *, "lnd2atm_vars%t_rad_grc max =", maxval(lnd2atm_vars%t_rad_grc)
 
 
     if ( any(.not. ieee_is_finite(lnd2atm_vars%t_rad_grc)) ) then
@@ -876,8 +825,6 @@ contains
       deallocate(forc_rho_not_downscaled_grc_global)
     end if
 
-    print *, "Dongyu debug here"
-
   end subroutine cw_export_mct
 
 
@@ -904,9 +851,7 @@ contains
     receive_status = receive_data_with_retries(var_id, arr_receive, &
                                                 recv_retry_count, recv_retry_time, &
                                                 use_delay=use_delay)
-    if (receive_status == 1) then
-      print *, "Received data ID=", var_id
-    else
+    if (receive_status /= 1) then
       print *, "Failed to receive data for variable ID:", var_id
     endif
 
