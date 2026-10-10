@@ -64,6 +64,7 @@ contains
     real(r8),allocatable :: glat(:), glon(:)  ! latitude, longitude
     real(r8),allocatable :: lats_in(:), lons_in(:)
     character(len=256):: url               = ' '
+    character(len=256):: invitee_email     = ' '
     character(len=256):: stream_cyberwater = ' '     ! cyberwater parameter input file
     character(len=256):: subdomain_latlon_file = ' '  ! cyberwater index input file
     logical  :: lexist                               ! File exists
@@ -162,7 +163,7 @@ contains
 
       ! query cyberwater parameter namelist
       namelist /cyberwater_inparm / &
-              url, initiator_id, invitee_id, subdomain_latlon_file
+              url, initiator_id, invitee_id, invitee_email, subdomain_latlon_file
 
       write(iulog,*) 'Read in cyberwater parameter namelist from: ', trim(stream_cyberwater)
       open( nu_nml, file=trim(stream_cyberwater), status='old', iostat=nml_error)
@@ -179,6 +180,7 @@ contains
       write(iulog,*) 'url is:', trim(url)
       write(iulog,*) 'initiator_id is:', initiator_id
       write(iulog,*) 'invitee_id is:',   invitee_id 
+      write(iulog,*) 'invitee_email is:', trim(invitee_email)
       write(iulog,*) 'subdomain_latlon_file: ', trim(subdomain_latlon_file)
 
       ! 1) read pairs from ASCII file
@@ -228,6 +230,7 @@ contains
       sd%destination_model_ID = index_VIC5 ! 2005
       sd%initiator_id = initiator_id
       sd%invitee_id = invitee_id
+      sd%invitee_email = trim(invitee_email)
       sd%input_variables_ID = [index_a2l_latitude, index_a2l_longitude, index_Sa_z, &
                                index_Sa_vel, index_Sa_shum, index_Sa_pbot, &
                                index_Sa_tbot, index_Faxa_lwdn, index_Faxa_precip, &
@@ -241,16 +244,15 @@ contains
                                   subdomain_size, subdomain_size, subdomain_size, &
                                   subdomain_size, subdomain_size, subdomain_size]
 
-      ! Write the session_ID for the whole program
-      id = start_session(sd)
-      call set_session_id(id)
+      ! Persistent HTTP, non-batch transfer, with SSE status updates.
+      id = start_session(sd, use_sse=.true., enable_batch=.false., force_http=2)
 
       print *, "------ Sleeping for 10 seconds ------"
       call sleep(10)
 
       ! Join the session
       ! Check the session status first
-      session_status = retrieve_session_status(id)
+      session_status = retrieve_session_status()
       if (session_status == 1) then
         print *, "Session status is 'created'"
       else if (session_status == 2) then
@@ -260,8 +262,6 @@ contains
       else
         print *, "Current status of session: ", session_status
       endif 
-
-      call stream_updates()
 
        deallocate(nCellsPerProc)
        deallocate(nCellsDisplacement)
@@ -382,16 +382,13 @@ contains
     !
     ! !LOCAL VARIABLES
     character(len=32), parameter    :: sub = "cyberwater_final"
-    integer :: result
-
     sd%initiator_id = 35
 
     if (masterproc) then
       write(iulog,*) 'Finishing CyberWater'
 
-      result = join_sse_thread_f()
       write(iulog,*) 'End session'
-      call end_session_now(sd%initiator_id)
+      call end_session_now()
 
       if (allocated(subdomain_ind)) deallocate(subdomain_ind)
 

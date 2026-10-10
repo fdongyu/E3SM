@@ -601,15 +601,15 @@ contains
       
       ! Receive data from server
       t_start = MPI_WTIME()
-      call retrieve_variable_data(id, index_Sl_t, Sl_t_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Sl_snowh, Sl_snowh_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Sl_albd, Sl_albd_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Fall_lat, Fall_lat_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Fall_sen, Fall_sen_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Fall_lwup, Fall_lwup_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Fall_evap, Fall_evap_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Fall_swnet, Fall_swnet_recv, subdomain_size)
-      call retrieve_variable_data(id, index_Sl_ram1, Sl_ram1_recv, subdomain_size)
+      call retrieve_variable_data(index_Sl_t, Sl_t_recv)
+      call retrieve_variable_data(index_Sl_snowh, Sl_snowh_recv)
+      call retrieve_variable_data(index_Sl_albd, Sl_albd_recv)
+      call retrieve_variable_data(index_Fall_lat, Fall_lat_recv)
+      call retrieve_variable_data(index_Fall_sen, Fall_sen_recv)
+      call retrieve_variable_data(index_Fall_lwup, Fall_lwup_recv)
+      call retrieve_variable_data(index_Fall_evap, Fall_evap_recv)
+      call retrieve_variable_data(index_Fall_swnet, Fall_swnet_recv)
+      call retrieve_variable_data(index_Sl_ram1, Sl_ram1_recv)
       t_end = MPI_WTIME()
       t_elapsed = t_end - t_start
       write(iulog,*) "Time used for receiving data from server: ", t_elapsed, " seconds"
@@ -881,7 +881,7 @@ contains
   end subroutine cw_export_mct
 
 
-  subroutine retrieve_variable_data(session_id, var_id, arr_receive, gsize)
+  subroutine retrieve_variable_data(var_id, arr_receive)
 
     !---------------------------------------------------------------------------
     ! !DESCRIPTION:
@@ -894,42 +894,20 @@ contains
     implicit none
 
     ! !ARGUMENTS:
-    type(SessionID)   , intent(in)    :: session_id
-    integer, intent(in)    :: var_id, gsize
+    integer, intent(in)    :: var_id
     real(r8),intent(inout) :: arr_receive(:)
 
     !
     ! !LOCAL VARIABLES:
-    integer :: receive_var_size, receive_status
+    integer :: receive_status
 
-    ! Check data availability with retries
-    if (check_data_availability_with_retries(var_id, recv_retry_count, recv_retry_time) == 1) then
-
-      ! Retrieve the variable size
-      receive_var_size = retrieve_variable_size(session_id, var_id)
-      print *, "Variable size for ID", var_id, "is", receive_var_size
-
-      ! Check if the received size matches the expected global size
-      if (receive_var_size .NE. gsize) then
-        call endrun('Variable receive size not equal to global mesh size!')
-      endif
-
-      ! Receive data with retries
-      receive_status = receive_data_with_retries(var_id, arr_receive, recv_retry_count, recv_retry_time, use_delay=use_delay)
-      if (receive_status == 1) then
-        print *, "Received data ID=", var_id
-      else
-        print *, "Failed to receive data for variable ID:", var_id
-      endif
-
-      ! Sleep for a defined period
-!      print *, "------ Sleeping for 1 seconds ------"
-!      call sleep(1)
-
+    receive_status = receive_data_with_retries(var_id, arr_receive, &
+                                                recv_retry_count, recv_retry_time, &
+                                                use_delay=use_delay)
+    if (receive_status == 1) then
+      print *, "Received data ID=", var_id
     else
-      ! Handle the case where data is not available after retries
-      print *, "Data is not available after retries."
-      call endrun('Data is not available after retries!')
+      print *, "Failed to receive data for variable ID:", var_id
     endif
 
   end subroutine retrieve_variable_data
