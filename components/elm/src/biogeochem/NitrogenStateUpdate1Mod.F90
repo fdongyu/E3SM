@@ -15,6 +15,9 @@ module NitrogenStateUpdate1Mod
   use CNStateType            , only : cnstate_type
   use GridcellDataType       , only : grc_ns, grc_nf
   use ColumnDataType         , only : col_ns, col_nf
+  use ColumnType             , only : col_pp
+  use LandunitType           , only : lun_pp
+  use landunit_varcon        , only : istcrop, istsoil
   use VegetationType         , only : veg_pp
   use VegetationDataType     , only : veg_ns, veg_nf
   use tracer_varcon          , only : is_active_betr_bgc
@@ -29,6 +32,7 @@ module NitrogenStateUpdate1Mod
   use decompMod              , only : bounds_type
   use elm_varcon             , only : dzsoi_decomp
   use elm_varctl             , only : use_fates
+  use elm_varctl             , only : fan_to_bgc_crop, fan_to_bgc_veg
   !
   implicit none
   save
@@ -119,6 +123,9 @@ contains
     ! !LOCAL VARIABLES:
     integer :: c,p,j,l,k ! indices
     integer :: fp,fc     ! lake filter indices
+    real(r8) :: fert_nh4_to_sminn
+    real(r8) :: fert_no3_to_sminn
+    logical :: fan_coupled_to_column
     real(r8), parameter :: frootc_nfix_thc = 10._r8  !threshold fine root carbon for nitrogen fixation gC/m2
 
     integer:: kyr                     ! current year
@@ -167,15 +174,32 @@ contains
             end do
          end do
 
-         ! repeating N dep and fixation for crops
+         ! Fertilizer/manure and soybean fixation for crop configurations.
          if ( crop_prog )then
             do j = 1, nlevdecomp
 
                ! column loop
                do fc = 1,num_soilc
                   c = filter_soilc(fc)
-                  ! N deposition and fixation (put all into NH4 pool)
-                  col_ns%smin_nh4_vr(c,j) = col_ns%smin_nh4_vr(c,j) + col_nf%fert_to_sminn(c)*dt * ndep_prof(c,j)
+                  fan_coupled_to_column = &
+                       (lun_pp%itype(col_pp%landunit(c)) == istcrop .and. fan_to_bgc_crop) .or. &
+                       (lun_pp%itype(col_pp%landunit(c)) == istsoil .and. fan_to_bgc_veg)
+
+                  if (fan_coupled_to_column) then
+                     ! FAN has already nitrified part of its TAN pools. Preserve that
+                     ! NH4/NO3 partition when transferring FAN output to ELM soil.
+                     fert_nh4_to_sminn = col_nf%fert_nh4_to_soil(c) + col_nf%manure_nh4_to_soil(c)
+                     fert_no3_to_sminn = col_nf%fert_no3_to_soil(c) + col_nf%manure_no3_to_soil(c)
+                  else
+                     ! Retain the legacy treatment for fertilizer not processed by FAN.
+                     fert_nh4_to_sminn = col_nf%fert_to_sminn(c)
+                     fert_no3_to_sminn = 0._r8
+                  end if
+
+                  col_ns%smin_nh4_vr(c,j) = col_ns%smin_nh4_vr(c,j) + &
+                       fert_nh4_to_sminn*dt * ndep_prof(c,j)
+                  col_ns%smin_no3_vr(c,j) = col_ns%smin_no3_vr(c,j) + &
+                       fert_no3_to_sminn*dt * ndep_prof(c,j)
                   col_ns%smin_nh4_vr(c,j) = col_ns%smin_nh4_vr(c,j) + col_nf%soyfixn_to_sminn(c)*dt * nfixation_prof(c,j)
                end do
             end do
