@@ -359,6 +359,8 @@ contains
          fracice           =>    soilhydrology_vars%fracice_col     , & ! Input:  [real(r8) (:,:) ]  fractional impermeability (-)
          icefrac           =>    soilhydrology_vars%icefrac_col     , & ! Input:  [real(r8) (:,:) ]  fraction of ice
          hkdepth           =>    soilhydrology_vars%hkdepth_col     , & ! Input:  [real(r8) (:)   ]  decay factor (m)
+         qout_col          =>    soilhydrology_vars%qout_col        , & ! Output: [real(r8) (:,:) ]  water flux out of each soil layer (mm H2O/s)
+         qin_col           =>    soilhydrology_vars%qin_col         , & ! Output: [real(r8) (:,:) ]  water flux into each soil layer (mm H2O/s)
 
          smpmin            =>    soilstate_vars%smpmin_col          , & ! Input:  [real(r8) (:)   ]  restriction for min of soil potential (mm)
          watsat            =>    soilstate_vars%watsat_col          , & ! Input:  [real(r8) (:,:) ]  volumetric soil water at saturation (porosity)
@@ -383,6 +385,12 @@ contains
 
       ! Because the depths in this routine are in mm, use local
       ! variable arrays instead of pointers
+      do fc = 1, num_hydrologyc
+         c = filter_hydrologyc(fc)
+         qin_col(c,:) = 0._r8
+         qout_col(c,:) = 0._r8
+      end do
+
 
       do fc = 1, num_hydrologyc
         c = filter_hydrologyc(fc)
@@ -708,6 +716,15 @@ contains
                cmx(c,j+1) =  0._r8
             end if
          endif
+      end do
+
+      ! Preserve the same interlayer fluxes used by the water-balance solve
+      ! for conservative aqueous nitrate transport later in this timestep.
+      do fc = 1, num_hydrologyc
+         c = filter_hydrologyc(fc)
+         nlevbed = nlev2bed(c)
+         qin_col(c,1:nlevbed) = qin(c,1:nlevbed)
+         qout_col(c,1:nlevbed) = qout(c,1:nlevbed)
       end do
 
       ! Solve for dwat

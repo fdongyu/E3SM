@@ -45,6 +45,8 @@ Module SoilHydrologyType
      real(r8), pointer :: fcov_col          (:)    => null() ! col fractional impermeable area
      real(r8), pointer :: fsat_col          (:)    => null() ! col fractional area with water table at surface
      real(r8), pointer :: h2osfc_thresh_col (:)    => null() ! col level at which h2osfc "percolates"   (time constant)
+     real(r8), pointer :: qout_col          (:,:)  => null() ! water flux out of each soil layer (mm H2O/s)
+     real(r8), pointer :: qin_col           (:,:)  => null() ! water flux into each soil layer (mm H2O/s)
 
      ! VIC
      real(r8), pointer :: hkdepth_col       (:)     => null()! col VIC decay factor (m) (time constant)
@@ -137,6 +139,8 @@ contains
     allocate(this%fcov_col          (begc:endc))                 ; this%fcov_col          (:)     = spval
     allocate(this%fsat_col          (begc:endc))                 ; this%fsat_col          (:)     = spval
     allocate(this%h2osfc_thresh_col (begc:endc))                 ; this%h2osfc_thresh_col (:)     = spval
+    allocate(this%qout_col          (begc:endc,nlevsoi))         ; this%qout_col          (:,:)   = spval
+    allocate(this%qin_col           (begc:endc,nlevsoi))         ; this%qin_col           (:,:)   = spval
 
     allocate(this%hkdepth_col       (begc:endc))                 ; this%hkdepth_col       (:)     = spval
     allocate(this%b_infil_col       (begc:endc))                 ; this%b_infil_col       (:)     = spval
@@ -219,6 +223,16 @@ contains
     call hist_addfld1d (fname='ZWT_PERCH',  units='m',  &
          avgflag='A', long_name='perched water table depth (vegetated landunits only)', &
          ptr_col=this%zwt_perched_col, l2g_scale_type='veg')
+
+    this%qout_col(begc:endc,:) = spval
+    call hist_addfld2d (fname='QOUT', units='mm H2O/s', type2d='levsoi', &
+         avgflag='A', long_name='water flux out of each soil layer', &
+         ptr_col=this%qout_col, default='inactive')
+
+    this%qin_col(begc:endc,:) = spval
+    call hist_addfld2d (fname='QIN', units='mm H2O/s', type2d='levsoi', &
+         avgflag='A', long_name='water flux into each soil layer', &
+         ptr_col=this%qin_col, default='inactive')
 
   end subroutine InitHistory
 

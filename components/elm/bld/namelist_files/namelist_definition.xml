@@ -723,6 +723,14 @@ Turn on vertical soil carbon.
 Requires the CN model to work (either CN or CNDV).
 </entry>
 
+<entry id="use_nvmovement" type="logical" category="bgc"
+       group="elm_inparm" valid_values="" value=".false.">
+Turn on fast aqueous vertical movement of soil nitrate and calculate nitrate
+leaching at the bottom of the soil column. This opt-in scheme is adapted from
+CTSM 5.3.072 (ESCOMP/CTSM pull request 2992). It currently requires vertical
+soil CN and standard fixed-depth ELM hydrology.
+</entry>
+
 <entry id="use_century_decomp" type="logical" category="bgc"
        group="elm_inparm" valid_values="" value=".false.">
 Use parameters for decomposition from the CENTURY Carbon model

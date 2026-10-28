@@ -11,7 +11,7 @@ module NitrogenDynamicsMod
   use shr_kind_mod        , only : r8 => shr_kind_r8
   use decompMod           , only : bounds_type
   use elm_varcon          , only : dzsoi_decomp, zisoi
-  use elm_varctl          , only : use_vertsoilc, use_fan
+  use elm_varctl          , only : use_vertsoilc, use_fan, use_nvmovement
   use subgridAveMod       , only : p2c
   use atm2lndType         , only : atm2lnd_type
   use CNStateType         , only : cnstate_type
@@ -358,6 +358,7 @@ contains
                   disn_conc = (sf_no3 * smin_no3_vr(c,j) * col_pp%dz(c,j) )/(h2osoi_liq(c,j) )
                end if
                !
+               if (.not. use_nvmovement) then
                ! calculate the N leaching flux as a function of the dissolved
                ! concentration and the sub-surface drainage flux
                smin_no3_leached_vr(c,j) = disn_conc * drain_tot(c) * h2osoi_liq(c,j) / ( tot_water(c) * col_pp%dz(c,j) )
@@ -367,6 +368,7 @@ contains
                !
                ! limit the leaching flux to a positive value
                smin_no3_leached_vr(c,j) = max(smin_no3_leached_vr(c,j), 0._r8)
+               end if
                !
                !
                ! Calculate N loss from surface runoff. Retain the fractional
@@ -390,6 +392,7 @@ contains
 
 
             endif
+            if (.not. use_nvmovement) then
             ! limit the flux based on current smin_no3 state
             ! only let at most the assumed soluble fraction
             ! of smin_no3 be leached on any given timestep
@@ -397,6 +400,7 @@ contains
 
             ! limit the flux to a positive value
             smin_no3_leached_vr(c,j) = max(smin_no3_leached_vr(c,j), 0._r8)
+            end if
 
          end do
       end do

@@ -287,7 +287,7 @@ contains
     namelist /elm_inparm/ maxpatch_pft
 
     namelist /elm_inparm/ &
-         use_nofire, use_lch4, use_vertsoilc, use_extralakelayers, &
+         use_nofire, use_lch4, use_nvmovement, use_vertsoilc, use_extralakelayers, &
          use_vichydro, use_century_decomp, use_cn, use_crop, use_snicar_frc, &
          use_snicar_ad, use_firn_percolation_and_compaction, use_extrasnowlayers,&
          use_T_rho_dependent_snowthk, use_vancouver, use_mexicocity, use_noio
@@ -639,6 +639,24 @@ contains
        end if
     end if
 
+    ! Soil nitrate movement currently consumes interlayer fluxes from the
+    ! standard ELM hydrology solver. Reject unsupported combinations rather
+    ! than silently using stale or undefined fluxes.
+    if (use_nvmovement) then
+       if (.not. use_cn .or. .not. use_vertsoilc) then
+          call endrun(msg=' ERROR:: use_nvmovement requires use_cn and use_vertsoilc.'//&
+               errMsg(__FILE__, __LINE__))
+       end if
+       if (use_vichydro .or. use_vsfm .or. use_var_soil_thick) then
+          call endrun(msg=' ERROR:: use_nvmovement currently requires standard fixed-depth ELM hydrology.'//&
+               errMsg(__FILE__, __LINE__))
+       end if
+       if (use_pflotran .or. use_betr) then
+          call endrun(msg=' ERROR:: use_nvmovement is not supported with PFLOTRAN or BeTR.'//&
+               errMsg(__FILE__, __LINE__))
+       end if
+    end if
+
     ! Consistency settings for vsfm settings
     if (use_vsfm .and. use_var_soil_thick) then
        call endrun(msg=' ERROR:: use_vsfm and use_var_soil_thick cannot both be set to true.'//&
@@ -728,6 +746,7 @@ contains
 
     call mpi_bcast (use_nofire, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_lch4, 1, MPI_LOGICAL, 0, mpicom, ier)
+    call mpi_bcast (use_nvmovement, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_vertsoilc, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_extralakelayers, 1, MPI_LOGICAL, 0, mpicom, ier)
     call mpi_bcast (use_extrasnowlayers, 1, MPI_LOGICAL, 0, mpicom, ier)
@@ -1032,6 +1051,7 @@ contains
     write(iulog,*) 'process control parameters:'
     write(iulog,*) '    use_nofire = ', use_nofire
     write(iulog,*) '    use_lch4 = ', use_lch4
+    write(iulog,*) '    use_nvmovement = ', use_nvmovement
     write(iulog,*) '    use_vertsoilc = ', use_vertsoilc
     write(iulog,*) '    use_var_soil_thick = ', use_var_soil_thick
     write(iulog,*) '    use_lake_wat_storage = ', use_lake_wat_storage

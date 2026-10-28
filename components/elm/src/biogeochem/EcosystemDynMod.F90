@@ -7,7 +7,7 @@ module EcosystemDynMod
   use dynSubgridControlMod, only : get_do_harvest
   use shr_kind_mod        , only : r8 => shr_kind_r8
   use shr_sys_mod         , only : shr_sys_flush
-  use elm_varctl          , only : use_c13, use_c14, use_fates, use_dynroot, use_fan
+  use elm_varctl          , only : use_c13, use_c14, use_fates, use_dynroot, use_fan, use_nvmovement
   use decompMod           , only : bounds_type
   use perf_mod            , only : t_startf, t_stopf
   use spmdMod             , only : masterproc
@@ -121,7 +121,7 @@ contains
   subroutine EcosystemDynLeaching(bounds, num_soilc, filter_soilc, &
        num_soilp, filter_soilp, num_pcropp, filter_pcropp, doalb, &
        cnstate_vars,  &
-       frictionvel_vars, canopystate_vars )
+       frictionvel_vars, canopystate_vars, soilstate_vars, soilhydrology_vars )
     !
     ! !DESCRIPTION:
     ! The core CN code is executed here. Calculates fluxes for maintenance
@@ -134,6 +134,7 @@ contains
     use PhosphorusDynamicsMod         , only: PhosphorusWeathering,PhosphorusAdsportion,PhosphorusDesoprtion,PhosphorusOcclusion
     use PhosphorusDynamicsMod         , only: PhosphorusBiochemMin,PhosphorusLeaching
     use NitrogenDynamicsMod       , only: NitrogenLeaching
+    use SoilNitrogenMovementMod  , only: SoilNitrogenMovement
     use NitrogenStateUpdate3Mod   , only: NitrogenStateUpdate3
     use PhosphorusStateUpdate3Mod     , only: PhosphorusStateUpdate3
     use PrecisionControlMod  , only: PrecisionControl
@@ -154,6 +155,8 @@ contains
     type(cnstate_type)       , intent(inout) :: cnstate_vars
     type(frictionvel_type)   , intent(in)    :: frictionvel_vars
     type(canopystate_type)   , intent(inout) :: canopystate_vars
+    type(soilstate_type)     , intent(in)    :: soilstate_vars
+    type(soilhydrology_type) , intent(in)    :: soilhydrology_vars
 
     character(len=64) :: event
     real(r8) :: dt
@@ -202,6 +205,14 @@ contains
     !-----------------------------------------------------------------------
     ! pflotran: when both 'pf-bgc' and 'pf-h' on, no need to call CLM-CN's N leaching module
     if (.not. (pf_cmode .and. pf_hmode)) then
+     if (use_nvmovement) then
+        event = 'SoilNitrogenMovement'
+        call t_start_lnd(event)
+        call SoilNitrogenMovement(bounds, num_soilc, filter_soilc, &
+             soilstate_vars, soilhydrology_vars)
+        call t_stop_lnd(event)
+     end if
+
      call NitrogenLeaching(bounds, num_soilc, filter_soilc, dt)
 
      call PhosphorusLeaching(bounds, num_soilc, filter_soilc, dt)
